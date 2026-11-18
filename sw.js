@@ -1,4 +1,4 @@
-const CACHE = 'ai-fieldnotes-v2';
+const CACHE = 'ai-fieldnotes-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -6,6 +6,7 @@ const ASSETS = [
   './app.js',
   './content.js',
   './playbooks.js',
+  './missions.js',
   './icon.svg',
   './manifest.webmanifest'
 ];
