@@ -1,3 +1,26 @@
+export const dailyPath16 = [
+  // Days 01-05: Layer 01 · Truth, Data & RAG Foundation
+  { day: 1, id: 'm1_1', layer: '01' },
+  { day: 2, id: 'm1_2', layer: '01' },
+  { day: 3, id: 'm4_2', layer: '01' },
+  { day: 4, id: 'm4_3', layer: '01' },
+  { day: 5, id: 'm5_1', layer: '01' },
+  // Days 06-08: Layer 02 · Context, State, MCP & Skills
+  { day: 6, id: 'm3_1', layer: '02' },
+  { day: 7, id: 'm5_2', layer: '02' },
+  { day: 8, id: 'm5_3', layer: '02' },
+  // Days 09-12: Layer 03 · Workflow & Multi-Agent Orchestration
+  { day: 9, id: 'm2_1', layer: '03' },
+  { day: 10, id: 'm2_2', layer: '03' },
+  { day: 11, id: 'm3_2', layer: '03' },
+  { day: 12, id: 'm4_1', layer: '03' },
+  // Days 13-16: Layer 04 · Harness, Trace & Evals Gate
+  { day: 13, id: 'm1_3', layer: '04' },
+  { day: 14, id: 'm3_3', layer: '04' },
+  { day: 15, id: 'm2_3', layer: '04' },
+  { day: 16, id: 'm5_4', layer: '04' }
+];
+
 export const systemSynthesisLayers = [
   {
     id: 'layer1',

@@ -1,6 +1,6 @@
 import { weeks, lessons, sources, terms, byId } from './content.js';
 import { playbooks, studioPresets, studioToggleMeta, defaultEvalChecks, trends2026 } from './playbooks.js';
-import { systemSynthesisLayers, pillars9, missionTracks, missions } from './missions.js';
+import { dailyPath16, systemSynthesisLayers, pillars9, missionTracks, missions } from './missions.js';
 
 const STORAGE_KEY = 'ai_fieldnotes_learning_v1';
 const DEFAULT_BASICS = ['w1d1', 'w1d2', 'w1d3', 'w1d4', 'w1d5', 'w2d1'];
@@ -16,7 +16,7 @@ let notesTab = 'notes'; // 'notes' | 'mistakes'
 let activePlaybook = playbooks[0].id;
 let studioTab = 'agents'; // 'agents' | 'schemas' | 'prompt'
 let activeTrack = missionTracks[0].id;
-let activeMissionId = missions[0].id;
+let activeMissionId = null;
 let activeVoiceRec = null;
 let isRecordingVoice = false;
 
@@ -793,7 +793,16 @@ function buildBilingualConfirmation(m, draft, evRec) {
   return { enConfirm, zhConfirm };
 }
 
+function nextDailyEntry() {
+  return dailyPath16.find((d) => !state.completedMissions.includes(d.id)) || dailyPath16[0];
+}
+
+function dayEntryFor(id) {
+  return dailyPath16.find((d) => d.id === id) || dailyPath16[0];
+}
+
 function renderMissions(arg) {
+  const todayEntry = nextDailyEntry();
   if (arg) {
     const found = missions.find((x) => x.id === arg);
     if (found) {
@@ -803,10 +812,17 @@ function renderMissions(arg) {
       activeTrack = arg;
       activeMissionId = (missions.find((x) => x.track === activeTrack) || missions[0]).id;
     }
+  } else if (!activeMissionId) {
+    activeMissionId = todayEntry.id;
+    const todayM = missions.find((x) => x.id === todayEntry.id);
+    if (todayM) activeTrack = todayM.track;
   }
   const trackMissions = missions.filter((m) => m.track === activeTrack);
-  const m = missions.find((x) => x.id === activeMissionId && x.track === activeTrack) || trackMissions[0] || missions[0];
+  const m = missions.find((x) => x.id === activeMissionId && x.track === activeTrack) || missions.find((x) => x.id === activeMissionId) || trackMissions[0] || missions[0];
   activeMissionId = m.id;
+  activeTrack = m.track;
+  const activeDay = dayEntryFor(m.id);
+  const todayM = missions.find((x) => x.id === todayEntry.id) || missions[0];
   const draft = state.missionDrafts[m.id] || '';
   const evalRec = state.missionEvals[m.id];
   const isDone = state.completedMissions.includes(m.id);
@@ -816,25 +832,47 @@ function renderMissions(arg) {
   return (
     '<section class="hero">' +
       '<div>' +
-        '<span class="eyebrow">' + e(t('BUILD-BY-LEARNING · YOUCHINA & ALUMINUM B2B ON YOUR MAC', '实战边做边学教练 · 基于你 Mac 上的真实项目')) + '</span>' +
-        '<h1>' + t('Make the Engineering Call.<br/>Get Coached Instantly.', '先说出你的架构判断，<br/>AI 教练当场拆解与纠偏。') + '</h1>' +
+        '<span class="eyebrow">' + e(t('DAILY 15-MIN SPRINT · DAY ' + String(todayEntry.day).padStart(2, '0') + ' OF 16 · LAYER ' + todayEntry.layer, '每日 15 分钟通关路线 · 今日第 ' + todayEntry.day + ' / 16 天 · 架构第 ' + todayEntry.layer + ' 层')) + '</span>' +
+        '<h1>' + t('Today’s Sprint: Day ' + String(todayEntry.day).padStart(2, '0') + '<br/>Learn by Building Real Projects.', '今日第 ' + todayEntry.day + ' 天：15 分钟实战<br/>先说出判断，教练当场纠偏。') + '</h1>' +
         '<p>' + e(t(
-          'Pick a real task from your YouChina or Aluminum B2B repos, type or dictate your thought on iPhone, get instant 4-pillar rubric feedback + English phrasing polish.',
-          '不再枯燥背教材！从你真实的 YouChina 与 Aluminum B2B 任务中选一关，直接用手机语音或打字说出你的思路，当场得到 4 维架构点评 + 英文地道表达打磨。'
+          'No guessing where to start: complete 1 card per day in order (Day 01 -> Day 16). Every sprint ends by snapping into your 4-Layer System Tree.',
+          '不再纠结从哪开始、每天怎么学：每天只做 1 关（按 Day 01 → Day 16 顺序推进），16 天正好亲手点亮完整的 4 层 AI 系统架构树。'
         )) + '</p>' +
         '<div class="h-stack">' +
-          '<a href="#mission-workspace" class="button" data-scroll="mission-workspace">⚡ ' + e(t('Jump to Active Mission', '直达当前实战任务')) + '</a>' +
-          '<a href="#/map" class="button" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)">🗺 ' + e(t('4-Layer System Tree', '查看散点归宗系统图')) + '</a>' +
+          '<button type="button" class="button" data-mission="' + todayM.id + '" data-scroll="mission-workspace">🎯 ' + e(t('Start Day ' + String(todayEntry.day).padStart(2, '0') + ': ' + todayM.title_en.replace(/^\d+\.\d+\s*·\s*/, ''), '开始今日 Day ' + todayEntry.day + ' · ' + todayM.title_zh.replace(/^\d+\.\d+\s*·\s*/, ''))) + '</button>' +
+          '<a href="#/map" class="button" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)">🗺 ' + e(t('4-Layer System Tree', '4 层归宗架构树')) + '</a>' +
           '<a href="#/studio" class="button" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)">🛠 ' + e(t('Project Studio', '项目架构工坊')) + '</a>' +
         '</div>' +
       '</div>' +
-      '<div class="progress-dial" style="--pct:' + percentage(doneTotal, missions.length) + '%"><div class="progress-dial-inner"><strong>' + doneTotal + '/' + missions.length + '</strong><span>' + e(t('Missions', '实战通关')) + '</span></div></div>' +
+      '<div class="progress-dial" style="--pct:' + percentage(doneTotal, missions.length) + '%"><div class="progress-dial-inner"><strong>' + doneTotal + '/' + missions.length + '</strong><span>' + e(t('Days Done', '天已通关')) + '</span></div></div>' +
     '</section>' +
     '<div class="stat-grid">' +
       '<div class="stat-card"><span class="stat-label">' + e(t('Missions Completed', '已通关任务')) + '</span><strong>' + doneTotal + ' <small>/ ' + missions.length + '</small></strong></div>' +
+      '<div class="stat-card"><span class="stat-label">' + e(t('Today’s Target', '今日打卡关卡')) + '</span><strong>Day ' + String(todayEntry.day).padStart(2, '0') + ' <small>/ 16</small></strong></div>' +
       '<div class="stat-card"><span class="stat-label">' + e(t('Coach Reviews Run', '已完成点评')) + '</span><strong>' + evalTotal + ' <small>/ ' + missions.length + '</small></strong></div>' +
       '<div class="stat-card"><span class="stat-label">' + e(t('Terms Mastered', '已掌握术语')) + '</span><strong>' + state.learned.length + ' <small>/ ' + terms.length + '</small></strong></div>' +
-      '<div class="stat-card"><span class="stat-label">' + e(t('Mistakes to Review', '待复盘错题')) + '</span><strong>' + getMistakes().length + ' <small>' + e(t('items', '道')) + '</small></strong></div>' +
+    '</div>' +
+    '<h2 class="section-heading">' + e(t('Your 15-Min Daily Study Loop (4 Simple Steps)', '每天 15 分钟怎么学：固定 4 步微闭环')) + '</h2>' +
+    '<div class="routine-grid">' +
+      '<div class="routine-step"><span class="caps">STEP 01 · 3 MIN</span><strong>' + e(t('Read Case & 3 Phrases', '看今日卡点与 3 个英文短语')) + '</strong><span>' + e(t('Skim the real YouChina/B2B scenario below + 3 command phrases.', '30 秒读懂今日真实业务卡点 + 必背 3 个指挥英文表达。')) + '</span></div>' +
+      '<div class="routine-step"><span class="caps">STEP 02 · 4 MIN</span><strong>' + e(t('Speak in English 🎙', '英文语音说出你的思路 🎙')) + '</strong><span>' + e(t('Tap Speak in English (or iPhone mic) and say what you would do.', '点下方「Speak in English」直接说英文或中英混说你会怎么解。')) + '</span></div>' +
+      '<div class="routine-step"><span class="caps">STEP 03 · 4 MIN</span><strong>' + e(t('Get EN+中文 Confirmation', '看中英确认与盲区纠偏')) + '</strong><span>' + e(t('Hit Evaluate: check Chinese intent confirm, missed risks & English polish.', '点评估看「中文确认」是否抓准、补齐盲区并学 3 句架构师英文。')) + '</span></div>' +
+      '<div class="routine-step"><span class="caps">STEP 04 · 4 MIN</span><strong>' + e(t('Complete Day & Snap to Tree', '打卡通关并归宗进 4 层大图')) + '</strong><span>' + e(t('Mark Done to unlock tomorrow’s Day and light up the 4-Layer System Tree.', '点标记通关自动解锁下一天，同时点亮「4 层系统树」对应节点。')) + '</span></div>' +
+    '</div>' +
+    '<h2 class="section-heading">' + e(t('16-Day Linear Daily Path (Layer 01 → Layer 04)', '16 天每日通关路线（按架构层从下到上自动归宗）')) + '</h2>' +
+    '<div class="day-strip">' +
+      dailyPath16.map((d) => {
+        const dm = missions.find((x) => x.id === d.id);
+        const dDone = state.completedMissions.includes(d.id);
+        const isToday = d.id === todayEntry.id && !dDone;
+        const isAct = d.id === m.id;
+        return (
+          '<button type="button" class="day-pill ' + (dDone ? 'done ' : '') + (isToday ? 'today ' : '') + (isAct ? 'active' : '') + '" data-mission="' + d.id + '">' +
+            '<strong>' + (dDone ? '✓ ' : (isToday ? '🎯 ' : '')) + 'Day ' + String(d.day).padStart(2, '0') + '</strong>' +
+            '<small>L' + d.layer + ' · ' + e((dm ? (isZh() ? dm.title_zh : dm.title_en) : '').replace(/^\d+\.\d+\s*·\s*/, '').slice(0, 14)) + '</small>' +
+          '</button>'
+        );
+      }).join('') +
     '</div>' +
     '<h2 class="section-heading">' + e(t('9-Pillar AI Engineering Mastery (100% Covered Across 16 Missions)', '9 大核心 AI Engineering 能力全景（16 个实战任务已 100% 覆盖）')) + '</h2>' +
     '<div class="pillar-strip">' +
@@ -879,6 +917,7 @@ function renderMissions(arg) {
     '</div>' +
     '<article class="lesson-sheet" id="mission-workspace">' +
       '<div class="lesson-meta">' +
+        '<span class="pill">DAY ' + String(activeDay.day).padStart(2, '0') + ' / 16 · LAYER ' + activeDay.layer + '</span>' +
         '<span class="pill gold">' + e(t('REAL PROJECT MISSION', '真实项目实战卡')) + '</span>' +
         '<span class="mac-path">📁 ' + e(m.macPath) + '</span>' +
       '</div>' +
@@ -1540,9 +1579,11 @@ document.addEventListener('click', (ev) => {
     return;
   }
   if (b.dataset.mission) {
+    const scrollTarget = b.dataset.scroll;
     activeMissionId = b.dataset.mission;
     navigate('missions/' + activeMissionId);
     render();
+    if (scrollTarget) document.getElementById(scrollTarget)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }
   if (b.dataset.starterText) {
@@ -1584,10 +1625,23 @@ document.addEventListener('click', (ev) => {
   }
   if (b.dataset.completeMission) {
     const mid = b.dataset.completeMission;
+    const wasDone = state.completedMissions.includes(mid);
     toggleArr(state.completedMissions, mid);
     save();
+    if (!wasDone) {
+      const doneDay = dayEntryFor(mid);
+      const upcoming = dailyPath16.find((d) => !state.completedMissions.includes(d.id));
+      if (upcoming) {
+        activeMissionId = upcoming.id;
+        const um = missions.find((x) => x.id === upcoming.id);
+        if (um) activeTrack = um.track;
+        render();
+        notice(t('Day ' + String(doneDay.day).padStart(2, '0') + ' Done ✓ Unlocked Day ' + String(upcoming.day).padStart(2, '0') + '!', 'Day ' + doneDay.day + ' 已通关 ✓ 已为你解锁 Day ' + upcoming.day + '！'));
+        return;
+      }
+    }
     render();
-    notice(state.completedMissions.includes(mid) ? t('Mission completed ✓', '实战任务已通关 ✓') : t('Mission unmarked', '已取消通关标记'));
+    notice(state.completedMissions.includes(mid) ? t('All 16 Days Completed! 🎉', '全部 16 天实战通关！🎉') : t('Mission unmarked', '已取消通关标记'));
     return;
   }
   if (b.dataset.playbook) {
