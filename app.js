@@ -250,7 +250,33 @@ function renderSession(missionId) {
 
   let bodyHtml = '';
 
+  const plainTerms = drill.terms_plain || (m.vocab || []).map(([en, zh, desc]) => [en, zh, desc]);
+  const peekGlossary =
+    '<details class="term-peek"><summary>📖 ' + e(t('Forgot a term? Tap for plain analogies', '忘记哪个专业词？点此看大白话解释')) + '</summary>' +
+      '<div class="plain-term-list" style="margin:8px 0">' +
+        plainTerms.map(([en, zh, desc]) =>
+          '<div class="plain-term-card"><div class="plain-term-head"><strong>' + e(en) + '</strong><span>' + e(zh) + '</span></div><p>' + e(desc) + '</p></div>'
+        ).join('') +
+      '</div>' +
+    '</details>';
+
   if (sess.step === 1) {
+    bodyHtml =
+      '<div class="step-card">' +
+        '<div class="step-tag">DAY ' + dInfo.day + ' · STEP 1/4 · ' + e(t('PLAIN-LANGUAGE TERMS FIRST', '先用大白话搞懂今天 3 个词')) + '</div>' +
+        '<h1 class="step-title">' + e(t('Know These 3 Words Before We Start', '先花 30 秒看懂这三个词，后面做题零障碍')) + '</h1>' +
+        '<p class="small muted" style="margin:0">' + e(t('No coding jargon—just everyday analogies for today’s task.', '不背代码定义，只记住它们在日常业务里相当于什么：')) + '</p>' +
+        '<div class="plain-term-list">' +
+          plainTerms.map(([en, zh, desc]) =>
+            '<div class="plain-term-card">' +
+              '<div class="plain-term-head"><strong>' + e(en) + '</strong><span>' + e(zh) + '</span></div>' +
+              '<p>' + e(desc) + '</p>' +
+            '</div>'
+          ).join('') +
+        '</div>' +
+        '<button type="button" class="button primary full" data-session-next="2">' + e(t('Got It! Try Real Case →', '看懂了，去处理今日真实事故 →')) + '</button>' +
+      '</div>';
+  } else if (sess.step === 2) {
     const picked = sess.s1Picked;
     const isAnswered = picked !== null;
     const isCorrect = picked === drill.answer;
@@ -259,11 +285,12 @@ function renderSession(missionId) {
 
     bodyHtml =
       '<div class="step-card">' +
-        '<div class="step-tag">DAY ' + dInfo.day + ' · STEP 1/4 · ' + e(t('FAST INTUITION CHECK', '真实事故快判')) + '</div>' +
+        '<div class="step-tag">DAY ' + dInfo.day + ' · STEP 2/4 · ' + e(t('REAL CASE INTUITION CHECK', '真实项目事故 2 选 1')) + '</div>' +
         '<h1 class="step-title">' + e(t(m.title_en, m.title_zh).replace(/^\d+\.\d+\s*·\s*/, '')) + '</h1>' +
         '<p class="step-body">' + e(t(m.scenario_en, m.scenario_zh)) + '</p>' +
         (isEnZh() ? '<p class="step-zh">' + e(m.scenario_zh) + '</p>' : '') +
-        '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">' +
+        peekGlossary +
+        '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">' +
           '<strong style="font-size:15px;display:block">' + e(t(drill.q_en, drill.q_zh)) + '</strong>' +
           (isEnZh() ? '<div class="step-zh" style="margin-top:4px">' + e(drill.q_zh) + '</div>' : '') +
         '</div>' +
@@ -287,33 +314,39 @@ function renderSession(missionId) {
               '<strong>' + (isCorrect ? '✓ ' + e(t('Spot on!', '判断精准！')) : '✕ ' + e(t('Watch out!', '差点踩坑！'))) + '</strong>' +
               '<div>' + e(t(drill.why_en, drill.why_zh)) + '</div>' +
               (isEnZh() ? '<div class="step-zh" style="color:inherit;opacity:.85">' + e(drill.why_zh) + '</div>' : '') +
-              '<button type="button" class="button primary full" style="margin-top:12px" data-session-next="2">' + e(t('Continue →', '继续下一步 →')) + '</button>' +
+              '<button type="button" class="button primary full" style="margin-top:12px" data-session-next="3">' + e(t('Continue to English Builder →', '下一步：拼英文指令 + 语音跟练 →')) + '</button>' +
             '</div>'
           : '') +
       '</div>';
-  } else if (sess.step === 2) {
+  } else if (sess.step === 3) {
     const placedItems = sess.wbOrder.map((idx) => drill.chunks[idx]);
     const targetSentence = drill.chunks.join(' ');
-    const placedSentence = placedItems.join(' ');
+    const chunksZh = drill.chunks_zh || drill.chunks.map(() => '');
+    const conf = evalRec ? buildBilingualConfirmation(m, draft, evalRec) : null;
 
     bodyHtml =
       '<div class="step-card">' +
-        '<div class="step-tag">DAY ' + dInfo.day + ' · STEP 2/4 · ' + e(t('BUILD THE ENGLISH COMMAND', '拼装地道英文指挥指令')) + '</div>' +
+        '<div class="step-tag">DAY ' + dInfo.day + ' · STEP 3/4 · ' + e(t('BILINGUAL COMMAND + VOICE', '带中文提示拼英文 + 语音拍板')) + '</div>' +
         '<h1 class="step-title">' + e(drill.zh_prompt) + '</h1>' +
-        '<p class="small muted" style="margin:0">' + e(t('Tap the English phrases in order to build the command:', '依次点选下方英文词块，拼出可直接指挥 Cursor / Claude 的句子：')) + '</p>' +
+        '<p class="small muted" style="margin:0">' + e(t('Every chip shows its plain Chinese meaning below. Tap them in order:', '每个英文词块下面都附了大白话中文意思，按顺序点选拼好：')) + '</p>' +
+        peekGlossary +
         '<div class="word-slot" id="word-slot">' +
           (placedItems.length
             ? sess.wbOrder.map((origIdx, pos) =>
-                '<button type="button" class="chip-token placed" data-wb-remove="' + pos + '">' + e(drill.chunks[origIdx]) + '</button>'
+                '<button type="button" class="chip-token placed" data-wb-remove="' + pos + '">' +
+                  '<span>' + e(drill.chunks[origIdx]) + '</span>' +
+                  (chunksZh[origIdx] ? '<small>' + e(chunksZh[origIdx]) + '</small>' : '') +
+                '</button>'
               ).join('')
-            : '<span class="small muted">' + e(t('Tap phrase chips below…', '点下方英文词块填入这里…')) + '</span>') +
+            : '<span class="small muted">' + e(t('Tap phrase chips below…', '点下方词块填入这里…')) + '</span>') +
         '</div>' +
         '<div class="word-bank">' +
           sess.wbShuffled.map((item) => {
             const used = sess.wbOrder.includes(item.idx);
             return (
               '<button type="button" class="chip-token ' + (used ? 'used' : '') + '" data-wb-add="' + item.idx + '">' +
-                e(item.text) +
+                '<span>' + e(item.text) + '</span>' +
+                (chunksZh[item.idx] ? '<small>' + e(chunksZh[item.idx]) + '</small>' : '') +
               '</button>'
             );
           }).join('') +
@@ -327,79 +360,90 @@ function renderSession(missionId) {
         '</div>' +
         (sess.wbChecked
           ? '<div class="feedback-drawer ' + (sess.wbCorrect ? 'ok' : 'bad') + '">' +
-              '<strong>' + (sess.wbCorrect ? '✓ ' + e(t('Great English command!', '英文表达地道准确！')) : e(t('Target phrasing:', '推荐地道英文：'))) + '</strong>' +
+              '<strong>' + (sess.wbCorrect ? '✓ ' + e(t('Great English command!', '拼句正确！')) : e(t('Target phrasing:', '推荐地道英文：'))) + '</strong>' +
               '<div><code>' + e(targetSentence) + '</code></div>' +
-              '<div class="vocab-grid" style="margin-top:10px">' +
-                m.vocab.map(([en, zh, desc]) =>
-                  '<div class="vocab-item"><strong>' + e(en) + '</strong><em>' + e(zh) + '</em><span>' + e(desc) + '</span></div>'
-                ).join('') +
-              '</div>' +
-              '<button type="button" class="button primary full" style="margin-top:12px" data-session-next="3">' + e(t('Continue to Voice Call →', '进入第 3 步：语音拍板 →')) + '</button>' +
             '</div>'
           : '') +
-      '</div>';
-  } else if (sess.step === 3) {
-    const conf = evalRec ? buildBilingualConfirmation(m, draft, evalRec) : null;
-
-    bodyHtml =
-      '<div class="step-card">' +
-        '<div class="step-tag">DAY ' + dInfo.day + ' · STEP 3/4 · ' + e(t('YOUR CALL + BILINGUAL COACH', '语音拍板 + 中英确认')) + '</div>' +
-        '<h1 class="step-title">' + e(t('How would you direct your AI agent here?', '现在轮到你：用英文说出你的架构决策')) + '</h1>' +
-        '<div class="voice-row">' +
-          '<button type="button" class="voice-btn ' + (isRecordingVoice ? 'recording' : '') + '" data-voice-mission="' + m.id + '">' +
-            (isRecordingVoice ? '🔴 ' + e(t('Listening (EN)... Tap to Stop', '正在听写… 点击停止')) : '🎙 ' + e(t('Speak in English', '点击说英文'))) +
-          '</button>' +
-          '<span class="small muted">' + e(t('Or tap starter chips / iPhone 🎙 mic', '也可点快捷句或用手机键盘语音')) + '</span>' +
+        '<div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line)">' +
+          '<strong style="font-size:14.5px;display:block">' + e(t('Now speak or type your own call (optional or read above aloud):', '试着用英文说一遍你的判断（可直接跟读上面这句，或说出自己的想法）：')) + '</strong>' +
+          '<div class="voice-row">' +
+            '<button type="button" class="voice-btn ' + (isRecordingVoice ? 'recording' : '') + '" data-voice-mission="' + m.id + '">' +
+              (isRecordingVoice ? '🔴 ' + e(t('Listening (EN)... Tap to Stop', '正在听写… 点击停止')) : '🎙 ' + e(t('Speak in English', '点击说英文'))) +
+            '</button>' +
+            '<span class="small muted">' + e(t('Or tap chips / iPhone mic', '或点下方快捷短语 / 手机语音')) + '</span>' +
+          '</div>' +
+          '<div class="starter-chips">' +
+            m.prompts_en.map((sp) =>
+              '<button type="button" class="starter-chip" data-starter-text="' + e(sp) + '">+ ' + e(sp) + '</button>'
+            ).join('') +
+          '</div>' +
+          '<textarea id="mission-draft" class="coach-textarea" data-mission-draft="' + m.id + '" placeholder="' + e(t('Speak or type English here...', '在这里用英文语音输入或打字...')) + '">' + e(draft) + '</textarea>' +
+          '<div class="h-stack" style="margin-top:10px">' +
+            '<button type="button" class="button primary" data-eval-mission="' + m.id + '">⚡ ' + e(t('Check & Confirm (EN + 中文)', '评估并看中英确认')) + '</button>' +
+            '<button type="button" class="button secondary tiny" data-session-next="4">' + e(t('Skip to System Summary →', '直接进入体系总结 →')) + '</button>' +
+          '</div>' +
+          (evalRec && conf
+            ? '<div style="margin-top:12px">' +
+                '<div class="confirm-card">' +
+                  '<div><strong>English Confirmation:</strong> ' + e(conf.enConfirm) + '</div>' +
+                  '<div style="margin-top:5px;color:#47584e"><strong>中文确认：</strong>' + e(conf.zhConfirm) + '</div>' +
+                '</div>' +
+                '<div class="pillar-list">' +
+                  m.rubric.map((rule, idx) => {
+                    const hit = Boolean(evalRec.hits[idx]);
+                    return (
+                      '<div class="pillar-row ' + (hit ? 'hit' : 'miss') + '">' +
+                        '<strong>' + (hit ? '✓ ' : '⚠️ ') + e(rule.pillar_en) + ' · ' + e(rule.pillar_zh) + '</strong>' +
+                        '<div>' + e(hit ? rule.hit_en : rule.miss_en) + '</div>' +
+                        '<div class="small" style="opacity:.85;margin-top:3px">' + e(hit ? rule.hit_zh : rule.miss_zh) + '</div>' +
+                      '</div>'
+                    );
+                  }).join('') +
+                '</div>' +
+                '<div class="h-stack">' +
+                  '<button type="button" class="button primary full" data-session-next="4">' + e(t('Continue to System Blueprint →', '下一步：把本关装进系统大图 →')) + '</button>' +
+                  '<button type="button" class="button secondary tiny" data-copy-mission-packet="' + m.id + '">📋 ' + e(t('Copy Coaching Packet', '复制发给 AI 对练')) + '</button>' +
+                '</div>' +
+              '</div>'
+            : '') +
         '</div>' +
-        '<div class="starter-chips">' +
-          m.prompts_en.map((sp) =>
-            '<button type="button" class="starter-chip" data-starter-text="' + e(sp) + '">+ ' + e(sp) + '</button>'
-          ).join('') +
-        '</div>' +
-        '<textarea id="mission-draft" class="coach-textarea" data-mission-draft="' + m.id + '" placeholder="' + e(t(
-          'Speak or type your call in English (or mixed EN+中文)...',
-          '说英文、打字或中英混写你的判断思路……'
-        )) + '">' + e(draft) + '</textarea>' +
-        '<div class="h-stack" style="margin-top:12px">' +
-          '<button type="button" class="button primary full" data-eval-mission="' + m.id + '">⚡ ' + e(t('Check & Confirm (EN + 中文)', '提交，看中英确认与点评 ⚡')) + '</button>' +
-        '</div>' +
-        (evalRec && conf
-          ? '<div style="margin-top:14px">' +
-              '<div class="confirm-card">' +
-                '<div><strong>English Confirmation:</strong> ' + e(conf.enConfirm) + '</div>' +
-                '<div style="margin-top:5px;color:#47584e"><strong>中文确认：</strong>' + e(conf.zhConfirm) + '</div>' +
-              '</div>' +
-              '<div class="pillar-list">' +
-                m.rubric.map((rule, idx) => {
-                  const hit = Boolean(evalRec.hits[idx]);
-                  return (
-                    '<div class="pillar-row ' + (hit ? 'hit' : 'miss') + '">' +
-                      '<strong>' + (hit ? '✓ ' : '⚠️ ') + e(rule.pillar_en) + ' · ' + e(rule.pillar_zh) + '</strong>' +
-                      '<div>' + e(hit ? rule.hit_en : rule.miss_en) + '</div>' +
-                      '<div class="small" style="opacity:.85;margin-top:3px">' + e(hit ? rule.hit_zh : rule.miss_zh) + '</div>' +
-                    '</div>'
-                  );
-                }).join('') +
-              '</div>' +
-              '<div class="h-stack" style="margin-top:10px">' +
-                '<button type="button" class="button primary full" data-session-next="4">' + e(t('Continue to Summary →', '继续完成本关 →')) + '</button>' +
-                '<button type="button" class="button secondary tiny" data-copy-mission-packet="' + m.id + '">📋 ' + e(t('Copy Coaching Packet', '复制发给 AI 对练')) + '</button>' +
-              '</div>' +
-            '</div>'
-          : '') +
       '</div>';
   } else {
+    const refLesson = lessons.find((x) => x.week === m.weekRef) || lessons[0];
     bodyHtml =
       '<div class="victory-card">' +
         '<div class="victory-badge">✓</div>' +
-        '<h1 class="step-title">Day ' + dInfo.day + ' ' + e(t('Complete!', '已通关！')) + ' 🔥</h1>' +
-        '<p class="step-body">' + e(t(m.gold_en, m.gold_zh)) + '</p>' +
-        (isEnZh() ? '<p class="step-zh">' + e(m.gold_zh) + '</p>' : '') +
+        '<h1 class="step-title">Day ' + dInfo.day + ' ' + e(t('Complete & Synthesized!', '通关！看看它落在系统哪一层')) + '</h1>' +
+        '<div class="mini-system-grid">' +
+          systemSynthesisLayers.map((ly) => {
+            const lit = ly.id === synLayer.id;
+            return (
+              '<div class="mini-layer-box ' + (lit ? 'lit' : '') + '">' +
+                (lit ? '★ ' : '') + 'Layer ' + ly.num + ' · ' + e(t(ly.title_en, ly.title_zh).replace(/^第.*层\s*·\s*/, '')) +
+              '</div>'
+            );
+          }).join('') +
+        '</div>' +
+        '<div class="causal-chain">' +
+          '<div><strong>1. ' + e(t('Upstream', '上游来源')) + '：</strong>' + e((drill.sys_up_zh || '').replace(/^上游：/, '')) + '</div>' +
+          '<div><strong>2. ' + e(t('Today’s Gate', '今日守门')) + '：</strong>' + e((drill.sys_role_zh || '').replace(/^本关卡口：/, '')) + '</div>' +
+          '<div><strong>3. ' + e(t('Downstream Impact', '下游结果')) + '：</strong>' + e((drill.sys_down_zh || '').replace(/^下游：/, '')) + '</div>' +
+        '</div>' +
         '<div class="synthesis-card">' +
-          '<strong style="display:block;color:#23465d;margin-bottom:4px">🧱 ' + e(t('Snapped into System Layer ' + synLayer.num + ': ' + synLayer.title_en, '已归宗进系统架构第 ' + synLayer.num + ' 层：' + synLayer.title_zh)) + '</strong>' +
+          '<strong style="display:block;color:#23465d;margin-bottom:4px">🧱 ' + e(t('Universal Rule Unlocked:', '沉淀为跨项目通用铁律：')) + '</strong>' +
           '<div>' + e(t(synLayer.law_en, synLayer.law_zh)) + '</div>' +
           (isEnZh() ? '<div class="step-zh">' + e(synLayer.law_zh) + '</div>' : '') +
         '</div>' +
+        '<details class="deepdive-details" open>' +
+          '<summary>📚 ' + e(t('Systematic Concept Sheet: Week ' + refLesson.week + ' — ' + refLesson.title_en, '体系化精读讲义：第 ' + refLesson.week + ' 周 — ' + refLesson.title)) + '</summary>' +
+          refLesson.sections.slice(0, 3).map((secItem) =>
+            '<div class="deepdive-sec">' +
+              '<strong>' + e(t(secItem.title_en, secItem.title)) + '</strong>' +
+              '<p style="margin:4px 0 0">' + e(t(secItem.body_en, secItem.body)) + '</p>' +
+              (isEnZh() ? '<div class="step-zh">' + e(secItem.body) + '</div>' : '') +
+            '</div>'
+          ).join('') +
+        '</details>' +
         '<button type="button" class="button primary full" data-finish-session="' + m.id + '">✓ ' + e(t('Finish & Unlock Next Day →', '完成打卡并解锁下一天 →')) + '</button>' +
       '</div>';
   }
