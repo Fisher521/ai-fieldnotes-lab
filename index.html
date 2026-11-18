@@ -1,32 +1,41 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <meta name="theme-color" content="#f6f5f0"/>
-  <meta name="description" content="用原理、框架和实验学习 AI Engineering。专为不写代码的 AI 系统设计者打造。"/>
-  <meta property="og:title" content="AI Engineering · 学习实验室"/>
-  <meta property="og:description" content="十周建立 AI 系统思维。课程、架构图、互动自测、无代码实验与学习笔记。"/>
-  <link rel="icon" href="/icon.svg" type="image/svg+xml"/>
-  <link rel="manifest" href="/manifest.webmanifest"/>
-  <link rel="stylesheet" href="/style.css"/>
-  <title>AI Engineering — 学习实验室</title>
+  <meta name="description" content="AI Fieldnotes — Learn AI Engineering systems thinking, architecture trade-offs, RAG, Agents, Harness, and Evals with bilingual English + Chinese support."/>
+  <meta property="og:title" content="AI Fieldnotes · AI Engineering Learning Lab"/>
+  <meta property="og:description" content="10-week AI systems thinking lab for AI-native Product Builders. Bilingual EN + 中文, architecture diagrams, quizzes, labs, and YouChina / SEO-GEO playbooks."/>
+  <link rel="icon" href="./icon.svg" type="image/svg+xml"/>
+  <link rel="manifest" href="./manifest.webmanifest"/>
+  <link rel="stylesheet" href="./style.css"/>
+  <title>AI Fieldnotes — AI Engineering Learning Lab</title>
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <a class="brand" href="#/home" aria-label="返回学习首页">
+      <a class="brand" href="#/home" aria-label="Back to dashboard">
         <span class="brand-mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M7 22.8V9.2L15.8 4L24.5 9.1V22.8L15.8 28L7 22.8Z" stroke="currentColor" stroke-width="1.8"/><path d="M7 16H24.5M15.8 4V28M7 9.2L24.5 22.8" stroke="currentColor" stroke-width="1.2" opacity=".75"/></svg></span>
-        <span class="brand-copy"><strong>AI FIELDNOTES</strong><small>AI Engineering 学习实验室</small></span>
+        <span class="brand-copy"><strong>AI FIELDNOTES</strong><small id="brand-sub">AI Engineering Learning Lab</small></span>
       </a>
-      <nav class="topnav" aria-label="主导航">
-        <a href="#/home" data-nav="home">总览</a>
-        <a href="#/curriculum" data-nav="curriculum">课程</a>
-        <a href="#/map" data-nav="map">知识地图</a>
-        <a href="#/cards" data-nav="cards">术语卡</a>
-        <a href="#/notes" data-nav="notes">笔记</a>
+      <nav class="topnav" aria-label="Main Navigation">
+        <a href="#/home" data-nav="home">Home</a>
+        <a href="#/curriculum" data-nav="curriculum">Curriculum</a>
+        <a href="#/playbooks" data-nav="playbooks">Playbooks</a>
+        <a href="#/studio" data-nav="studio">Studio</a>
+        <a href="#/map" data-nav="map">Map</a>
+        <a href="#/cards" data-nav="cards">Terms</a>
+        <a href="#/notes" data-nav="notes">Notes</a>
       </nav>
-      <button class="header-action" id="open-data" title="导出或导入学习进度">↗ <span>学习数据</span></button>
+      <div class="topbar-controls">
+        <div class="lang-switch" role="group" aria-label="Language mode">
+          <button type="button" data-lang="en_zh" title="English primary + Chinese translation option">EN+译</button>
+          <button type="button" data-lang="en" title="Pure English immersion">EN</button>
+          <button type="button" data-lang="zh" title="中文为主 + 英文对照">中文</button>
+        </div>
+        <button class="header-action" id="open-data" title="Export or import learning progress">↗ <span id="data-btn-label">Data</span></button>
+      </div>
     </header>
     <div class="layout">
       <aside class="sidebar" id="sidebar"></aside>
@@ -35,11 +44,19 @@
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <dialog id="data-dialog" class="modal">
-    <form method="dialog"><button class="modal-close" aria-label="关闭">×</button></form>
-    <div class="modal-header"><span class="eyebrow">LEARNING DATA</span><h2>管理学习进度</h2><p>目前数据保存在这台设备的浏览器中。导出备份后，可以在另一台设备导入，继续学习。</p></div>
-    <div class="modal-actions"><button id="export-data" class="button primary">↓ 导出学习记录</button><button id="import-data" class="button secondary">↑ 导入已有记录</button><input type="file" id="import-file" accept="application/json,.json" hidden/></div>
-    <p class="privacy">不需要注册，也不上传学习笔记。清理浏览器数据可能丢失进度，请定期备份。</p>
+    <form method="dialog"><button class="modal-close" aria-label="Close">×</button></form>
+    <div class="modal-header" id="modal-header-content">
+      <span class="eyebrow">LEARNING DATA</span>
+      <h2>Backup &amp; Restore Progress</h2>
+      <p>Your progress, quiz scores, language mode, and notes are saved locally in this browser. Export JSON anytime to move across devices.</p>
+    </div>
+    <div class="modal-actions">
+      <button id="export-data" class="button primary">↓ Export JSON Backup</button>
+      <button id="import-data" class="button secondary">↑ Import Backup</button>
+      <input type="file" id="import-file" accept="application/json,.json" hidden/>
+    </div>
+    <p class="privacy" id="modal-privacy">No login required. No notes leave your browser. Export periodically before clearing browser data.</p>
   </dialog>
-  <script type="module" src="/app.js"></script>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>

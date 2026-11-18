@@ -1,53 +1,24 @@
-# AI Fieldnotes · AI Engineering 学习实验室
+# AI Fieldnotes · AI Engineering Learning Lab
 
-为零编程背景、重点学习 AI 系统逻辑、架构和工程取舍的学习者设计的中文学习 Web App。
+A bilingual (`EN+译` / `EN` / `中文`) static learning workspace designed for non-coding **AI-native Product Builders** who want engineering judgment around RAG, Agents, Workflows, Harness Engineering, and Evals—directly applied to real products like **YouChina Agents** and **SEO / GEO Content Automation**.
 
-## 已完成
+## Features
 
-- 10 周课程路径：第一周 5 节完整基础课；第 2–10 周每周 1 节主题导学（不是完整的 10 周逐日课程）
-- 每节课程的原理讲解、概念要点、课程目标与互动选择题（提交后有解析）
-- AI 辅助的无代码实验任务，一键复制提示词
-- 概念架构图、知识地图、26 张可翻转术语卡
-- 学习笔记自动保存、完成进度、答题成绩、实验状态
-- JSON 学习记录导出和导入；无账户和云数据库
-- 响应式界面、PWA manifest 与缓存功能
+- **10-Week Curriculum**: Full 5-lesson Week 1 (`w1d1`–`w1d5`) + focused Module Guides for Weeks 2–10 (`w2d1`–`w10d1`), preserving original lesson IDs for localStorage compatibility.
+- **3-Way Language Switcher (`EN+译` / `EN` / `中文`)**: Default `EN+译` lets you read authentic English engineering phrasing first, click `译 / 中文` on any block (or expand all) to check Chinese meaning, and study key English engineering phrases per lesson.
+- **Builder Playbooks (`#/playbooks`)**:
+  1. **YouChina Agent Friction & Refactor**: Interactive 4-symptom diagnoser (Architecture drift, Policy/Ticket hallucination, Multi-agent context rot, AI Coding regressions), layer ownership table, copy-ready `AGENTS.md` template, and refactoring prompts.
+  2. **SEO, GEO & Multilingual Automation Blueprint**: 5-stage anti-hallucination workflow, GEO chunking rules for AI search citations, node-by-node **n8n / Make / Dify** mapping table, and multilingual localization Critic checklist.
+- **34 Bilingual Flashcards**, **7 Inline Architecture Diagrams**, **Interactive Quizzes + Mistake Notebook (`错题复盘本`)**, **Auto-Saving Field Notes**, and **JSON Export/Import**.
 
-## 数据说明
-
-本版学习进度和笔记保存在**当前浏览器的 localStorage**。清理浏览器数据或更换设备会丢失本地记录；先点右上角“学习数据”导出 JSON 备份，其他设备可导入。它**不是跨设备实时云同步**。云端部署仅托管 App 的文件，不能自动同步学习数据。暂未内置聊天 AI 或在线 LLM API。
-
-## 本地运行
-
-在项目目录执行：
+## Local Development
 
 ```bash
 python3 -m http.server 8000
 ```
 
-浏览器打开 `http://localhost:8000`。不要直接双击 index.html；推荐 HTTP 静态服务器以正常加载 JS 模块和离线缓存。
+Open `http://localhost:8000`.
 
-## 免费/低成本部署
+## Deployment
 
-该项目为纯静态页面，无 npm 依赖，无编译步骤：
-
-- **Cloudflare Pages**：使用「Direct Upload」上传本目录文件（若上传 ZIP，按平台提示选择 ZIP）。构建命令留空，输出目录为根目录。
-- **Netlify**：登录后使用 Netlify Drop，把解压后的整个项目文件夹拖入部署区域。
-- **Vercel**：新建项目并导入本目录或 Git 仓库；Framework Preset 选择 Other，Build Command 留空，Output Directory 留空或 `.`（以平台实际界面可用选项为准）。
-
-部署后打开首页、Week 1 Day 1、术语卡和进度记录，确认页面能正常载入并在刷新后保留。
-
-## 扩展课程
-
-在 `content.js` 中维护 `weeks`、`lessons`、`terms`。每节课程包含：
-
-- `id`、`week`、`day`、`title`、`summary`、`outcomes`
-- `sections`（知识分节）
-- `quiz`（单选题及答案/解析）
-- `lab`（AI 实验提示词）
-- `takeaway`（核心总结）
-
-以后可以增加 Day 2–5 等内容，继续完善后续主题。为保证已保存的进度不丢失，请不要随意修改已经发布课程的 `id`。
-
-## 设计理念
-
-理解原理 → 搞清输入/输出和关键机制 → 判断场景和取舍 → 让 AI 协助实现 → 人工验收。
+Pure static files with relative `./` asset paths and zero build dependencies—ready for **Cloudflare Pages**, **GitHub Pages**, or **Vercel**.
