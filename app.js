@@ -25,7 +25,8 @@ let sess = {
   wbOrder: [],
   wbShuffled: [],
   wbChecked: false,
-  wbCorrect: false
+  wbCorrect: false,
+  wbShowZh: false
 };
 
 let activeVoiceRec = null;
@@ -92,6 +93,15 @@ function e(s) {
 function isZh() { return state.langMode === 'zh'; }
 function isEnZh() { return state.langMode === 'en_zh'; }
 function t(en, zh) { return isZh() ? (zh || en) : (en || zh); }
+function zhCollapse(label, innerHtml) {
+  if (!isEnZh() || !innerHtml) return '';
+  return (
+    '<details class="zh-collapse"' + (state.showAllTr ? ' open' : '') + '>' +
+      '<summary>译 · ' + e(label) + '</summary>' +
+      '<div class="zh-collapse-body">' + innerHtml + '</div>' +
+    '</details>'
+  );
+}
 function percentage(n, d) { return d ? Math.round((n / d) * 100) : 0; }
 function bar(n) { return '<div class="micro-progress"><i style="width:' + n + '%"></i></div>'; }
 
@@ -135,7 +145,8 @@ function initSession(missionId) {
     wbOrder: [],
     wbShuffled: shuffled,
     wbChecked: false,
-    wbCorrect: false
+    wbCorrect: false,
+    wbShowZh: false
   };
 }
 
@@ -199,7 +210,7 @@ function renderPath() {
         '<div class="duo-banner ' + u.cls + '">' +
           '<div>' +
             '<div class="u-num">UNIT ' + u.num + ' · DAYS ' + u.days[0].day + '–' + u.days[u.days.length - 1].day + '</div>' +
-            '<h2>' + e(t(u.name_en, u.name_zh)) + (isEnZh() ? ' · ' + e(u.name_zh) : '') + '</h2>' +
+            '<h2>' + e(t(u.name_en, u.name_zh)) + '</h2>' +
             '<p>' + e(t(u.desc_en, u.desc_zh)) + '</p>' +
           '</div>' +
           '<span class="u-count">' + unitDone + '/' + u.days.length + '</span>' +
@@ -211,7 +222,6 @@ function renderPath() {
             const isToday = d.id === todayEntry.id && !done;
             const nodeCls = done ? 'done' : (isToday ? 'current' : '');
             const shortTitle = (m ? t(m.title_en, m.title_zh) : '').replace(/^\d+\.\d+\s*·\s*/, '');
-            const subZh = m ? m.title_zh.replace(/^\d+\.\d+\s*·\s*/, '') : '';
             return (
               '<div class="duo-node-wrap ' + offsets[idx % 4] + '">' +
                 (isToday ? '<div class="duo-start-bubble">' + e(t('START · DAY ' + d.day, '从这里开始 · Day ' + d.day)) + '</div>' : '') +
@@ -219,7 +229,6 @@ function renderPath() {
                   (done ? '✓' : (isToday ? '★' : d.day)) +
                 '</button>' +
                 '<div class="duo-node-label">Day ' + d.day + ' · ' + e(shortTitle) + '</div>' +
-                (isEnZh() ? '<div class="duo-node-sub">' + e(subZh) + '</div>' : '') +
               '</div>'
             );
           }).join('') +
@@ -250,12 +259,16 @@ function renderSession(missionId) {
 
   let bodyHtml = '';
 
-  const plainTerms = drill.terms_plain || (m.vocab || []).map(([en, zh, desc]) => [en, zh, desc]);
+  const plainTerms = drill.terms_plain || (m.vocab || []).map(([en, zh, enDesc]) => [en, zh, zh, enDesc]);
   const peekGlossary =
     '<details class="term-peek"><summary>📖 ' + e(t('Forgot a term? Tap for plain analogies', '忘记哪个专业词？点此看大白话解释')) + '</summary>' +
       '<div class="plain-term-list" style="margin:8px 0">' +
-        plainTerms.map(([en, zh, desc]) =>
-          '<div class="plain-term-card"><div class="plain-term-head"><strong>' + e(en) + '</strong><span>' + e(zh) + '</span></div><p>' + e(desc) + '</p></div>'
+        plainTerms.map(([en, zh, zhDesc, enPlain]) =>
+          '<div class="plain-term-card">' +
+            '<div class="plain-term-head"><strong>' + e(en) + '</strong>' + (isZh() ? '<span>' + e(zh) + '</span>' : '') + '</div>' +
+            '<p>' + e(isZh() ? zhDesc : (enPlain || zhDesc)) + '</p>' +
+            zhCollapse('查看中文大白话解释', '<strong>' + e(zh) + '：</strong>' + e(zhDesc)) +
+          '</div>'
         ).join('') +
       '</div>' +
     '</details>';
@@ -267,10 +280,11 @@ function renderSession(missionId) {
         '<h1 class="step-title">' + e(t('Know These 3 Words Before We Start', '先花 30 秒看懂这三个词，后面做题零障碍')) + '</h1>' +
         '<p class="small muted" style="margin:0">' + e(t('No coding jargon—just everyday analogies for today’s task.', '不背代码定义，只记住它们在日常业务里相当于什么：')) + '</p>' +
         '<div class="plain-term-list">' +
-          plainTerms.map(([en, zh, desc]) =>
+          plainTerms.map(([en, zh, zhDesc, enPlain]) =>
             '<div class="plain-term-card">' +
-              '<div class="plain-term-head"><strong>' + e(en) + '</strong><span>' + e(zh) + '</span></div>' +
-              '<p>' + e(desc) + '</p>' +
+              '<div class="plain-term-head"><strong>' + e(en) + '</strong>' + (isZh() ? '<span>' + e(zh) + '</span>' : '') + '</div>' +
+              '<p>' + e(isZh() ? zhDesc : (enPlain || zhDesc)) + '</p>' +
+              zhCollapse('查看中文大白话解释', '<strong>' + e(zh) + '：</strong>' + e(zhDesc)) +
             '</div>'
           ).join('') +
         '</div>' +
@@ -281,18 +295,21 @@ function renderSession(missionId) {
     const isAnswered = picked !== null;
     const isCorrect = picked === drill.answer;
     const opts = isZh() ? drill.options_zh : drill.options_en;
-    const altOpts = isZh() ? drill.options_en : drill.options_zh;
 
     bodyHtml =
       '<div class="step-card">' +
         '<div class="step-tag">DAY ' + dInfo.day + ' · STEP 2/4 · ' + e(t('REAL CASE INTUITION CHECK', '真实项目事故 2 选 1')) + '</div>' +
         '<h1 class="step-title">' + e(t(m.title_en, m.title_zh).replace(/^\d+\.\d+\s*·\s*/, '')) + '</h1>' +
         '<p class="step-body">' + e(t(m.scenario_en, m.scenario_zh)) + '</p>' +
-        (isEnZh() ? '<p class="step-zh">' + e(m.scenario_zh) + '</p>' : '') +
         peekGlossary +
         '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">' +
           '<strong style="font-size:15px;display:block">' + e(t(drill.q_en, drill.q_zh)) + '</strong>' +
-          (isEnZh() ? '<div class="step-zh" style="margin-top:4px">' + e(drill.q_zh) + '</div>' : '') +
+          zhCollapse(
+            '查看场景与题目中文释义',
+            '<div>' + e(m.scenario_zh) + '</div>' +
+            '<div style="margin-top:6px"><strong>问：</strong>' + e(drill.q_zh) + '</div>' +
+            '<ul class="zh-opt-list">' + drill.options_zh.map((oz, idx) => '<li>' + (idx + 1) + '. ' + e(oz) + '</li>').join('') + '</ul>'
+          ) +
         '</div>' +
         '<div class="choice-stack">' +
           opts.map((opt, i) => {
@@ -304,7 +321,6 @@ function renderSession(missionId) {
             return (
               '<button type="button" class="choice-btn ' + cls + '" data-s1-choice="' + i + '" ' + (isAnswered ? 'disabled' : '') + '>' +
                 e(opt) +
-                (isEnZh() ? '<small>' + e(altOpts[i]) + '</small>' : '') +
               '</button>'
             );
           }).join('') +
@@ -313,7 +329,7 @@ function renderSession(missionId) {
           ? '<div class="feedback-drawer ' + (isCorrect ? 'ok' : 'bad') + '">' +
               '<strong>' + (isCorrect ? '✓ ' + e(t('Spot on!', '判断精准！')) : '✕ ' + e(t('Watch out!', '差点踩坑！'))) + '</strong>' +
               '<div>' + e(t(drill.why_en, drill.why_zh)) + '</div>' +
-              (isEnZh() ? '<div class="step-zh" style="color:inherit;opacity:.85">' + e(drill.why_zh) + '</div>' : '') +
+              zhCollapse('查看中文解析', e(drill.why_zh)) +
               '<button type="button" class="button primary full" style="margin-top:12px" data-session-next="3">' + e(t('Continue to English Builder →', '下一步：拼英文指令 + 语音跟练 →')) + '</button>' +
             '</div>'
           : '') +
@@ -322,20 +338,27 @@ function renderSession(missionId) {
     const placedItems = sess.wbOrder.map((idx) => drill.chunks[idx]);
     const targetSentence = drill.chunks.join(' ');
     const chunksZh = drill.chunks_zh || drill.chunks.map(() => '');
+    const showChunkZh = isZh() || (isEnZh() && sess.wbShowZh);
     const conf = evalRec ? buildBilingualConfirmation(m, draft, evalRec) : null;
 
     bodyHtml =
       '<div class="step-card">' +
-        '<div class="step-tag">DAY ' + dInfo.day + ' · STEP 3/4 · ' + e(t('BILINGUAL COMMAND + VOICE', '带中文提示拼英文 + 语音拍板')) + '</div>' +
-        '<h1 class="step-title">' + e(drill.zh_prompt) + '</h1>' +
-        '<p class="small muted" style="margin:0">' + e(t('Every chip shows its plain Chinese meaning below. Tap them in order:', '每个英文词块下面都附了大白话中文意思，按顺序点选拼好：')) + '</p>' +
+        '<div class="step-tag">DAY ' + dInfo.day + ' · STEP 3/4 · ' + e(t('BUILD THE ENGLISH COMMAND + VOICE', '拼装地道英文指令 + 语音跟练')) + '</div>' +
+        '<h1 class="step-title">' + e(t('Build the Principal Engineer Command', '拼出本关地道英文指令')) + '</h1>' +
+        '<p class="small muted" style="margin:0">' + e(t('Tap the English phrase chips in order, then speak it aloud:', '按顺序点击下方英文词块拼好整句，再用语音说一遍：')) + '</p>' +
+        (isZh()
+          ? '<div class="zh-collapse-body" style="margin:10px 0">' + e(drill.zh_prompt) + '</div>'
+          : zhCollapse('查看这句要表达的中文意思', e(drill.zh_prompt))) +
         peekGlossary +
+        (isEnZh()
+          ? '<div style="margin-top:8px"><button type="button" class="zh-chip-toggle ' + (sess.wbShowZh ? 'active' : '') + '" data-toggle-wb-zh="1">译 · ' + (sess.wbShowZh ? '隐藏词块中文提示' : '显示词块中文提示') + '</button></div>'
+          : '') +
         '<div class="word-slot" id="word-slot">' +
           (placedItems.length
             ? sess.wbOrder.map((origIdx, pos) =>
                 '<button type="button" class="chip-token placed" data-wb-remove="' + pos + '">' +
                   '<span>' + e(drill.chunks[origIdx]) + '</span>' +
-                  (chunksZh[origIdx] ? '<small>' + e(chunksZh[origIdx]) + '</small>' : '') +
+                  (showChunkZh && chunksZh[origIdx] ? '<small>' + e(chunksZh[origIdx]) + '</small>' : '') +
                 '</button>'
               ).join('')
             : '<span class="small muted">' + e(t('Tap phrase chips below…', '点下方词块填入这里…')) + '</span>') +
@@ -346,7 +369,7 @@ function renderSession(missionId) {
             return (
               '<button type="button" class="chip-token ' + (used ? 'used' : '') + '" data-wb-add="' + item.idx + '">' +
                 '<span>' + e(item.text) + '</span>' +
-                (chunksZh[item.idx] ? '<small>' + e(chunksZh[item.idx]) + '</small>' : '') +
+                (showChunkZh && chunksZh[item.idx] ? '<small>' + e(chunksZh[item.idx]) + '</small>' : '') +
               '</button>'
             );
           }).join('') +
@@ -393,9 +416,9 @@ function renderSession(missionId) {
                     const hit = Boolean(evalRec.hits[idx]);
                     return (
                       '<div class="pillar-row ' + (hit ? 'hit' : 'miss') + '">' +
-                        '<strong>' + (hit ? '✓ ' : '⚠️ ') + e(rule.pillar_en) + ' · ' + e(rule.pillar_zh) + '</strong>' +
-                        '<div>' + e(hit ? rule.hit_en : rule.miss_en) + '</div>' +
-                        '<div class="small" style="opacity:.85;margin-top:3px">' + e(hit ? rule.hit_zh : rule.miss_zh) + '</div>' +
+                        '<strong>' + (hit ? '✓ ' : '⚠️ ') + e(t(rule.pillar_en, rule.pillar_zh)) + '</strong>' +
+                        '<div>' + e(t(hit ? rule.hit_en : rule.miss_en, hit ? rule.hit_zh : rule.miss_zh)) + '</div>' +
+                        zhCollapse('查看中文点评', '<strong>' + e(rule.pillar_zh) + '：</strong>' + e(hit ? rule.hit_zh : rule.miss_zh)) +
                       '</div>'
                     );
                   }).join('') +
@@ -425,14 +448,20 @@ function renderSession(missionId) {
           }).join('') +
         '</div>' +
         '<div class="causal-chain">' +
-          '<div><strong>1. ' + e(t('Upstream', '上游来源')) + '：</strong>' + e((drill.sys_up_zh || '').replace(/^上游：/, '')) + '</div>' +
-          '<div><strong>2. ' + e(t('Today’s Gate', '今日守门')) + '：</strong>' + e((drill.sys_role_zh || '').replace(/^本关卡口：/, '')) + '</div>' +
-          '<div><strong>3. ' + e(t('Downstream Impact', '下游结果')) + '：</strong>' + e((drill.sys_down_zh || '').replace(/^下游：/, '')) + '</div>' +
+          '<div><strong>1. ' + e(t('Upstream', '上游来源')) + ':</strong> ' + e(t(drill.sys_up_en, drill.sys_up_zh).replace(/^(Upstream:|上游：)\s*/, '')) + '</div>' +
+          '<div><strong>2. ' + e(t('Today’s Gate', '今日守门')) + ':</strong> ' + e(t(drill.sys_role_en, drill.sys_role_zh).replace(/^(Today’s Gate:|本关卡口：)\s*/, '')) + '</div>' +
+          '<div><strong>3. ' + e(t('Downstream Impact', '下游结果')) + ':</strong> ' + e(t(drill.sys_down_en, drill.sys_down_zh).replace(/^(Downstream:|下游：)\s*/, '')) + '</div>' +
+          zhCollapse(
+            '查看上下游中文解释',
+            '<div><strong>1. 上游：</strong>' + e((drill.sys_up_zh || '').replace(/^上游：/, '')) + '</div>' +
+            '<div><strong>2. 本关卡口：</strong>' + e((drill.sys_role_zh || '').replace(/^本关卡口：/, '')) + '</div>' +
+            '<div><strong>3. 下游：</strong>' + e((drill.sys_down_zh || '').replace(/^下游：/, '')) + '</div>'
+          ) +
         '</div>' +
         '<div class="synthesis-card">' +
           '<strong style="display:block;color:#23465d;margin-bottom:4px">🧱 ' + e(t('Universal Rule Unlocked:', '沉淀为跨项目通用铁律：')) + '</strong>' +
           '<div>' + e(t(synLayer.law_en, synLayer.law_zh)) + '</div>' +
-          (isEnZh() ? '<div class="step-zh">' + e(synLayer.law_zh) + '</div>' : '') +
+          zhCollapse('查看中文通用铁律', e(synLayer.law_zh)) +
         '</div>' +
         '<details class="deepdive-details" open>' +
           '<summary>📚 ' + e(t('Systematic Concept Sheet: Week ' + refLesson.week + ' — ' + refLesson.title_en, '体系化精读讲义：第 ' + refLesson.week + ' 周 — ' + refLesson.title)) + '</summary>' +
@@ -440,7 +469,7 @@ function renderSession(missionId) {
             '<div class="deepdive-sec">' +
               '<strong>' + e(t(secItem.title_en, secItem.title)) + '</strong>' +
               '<p style="margin:4px 0 0">' + e(t(secItem.body_en, secItem.body)) + '</p>' +
-              (isEnZh() ? '<div class="step-zh">' + e(secItem.body) + '</div>' : '') +
+              zhCollapse('查看本节中文精读', e(secItem.body)) +
             '</div>'
           ).join('') +
         '</details>' +
@@ -492,7 +521,7 @@ function renderMap() {
           '</div>' +
           '<div class="layer-law">' +
             '<strong>' + e(t(layer.law_en, layer.law_zh)) + '</strong>' +
-            (isEnZh() ? '<div class="step-zh" style="margin-top:4px">' + e(layer.law_zh) + '</div>' : '') +
+            zhCollapse('查看中文铁律', e(layer.law_zh)) +
           '</div>' +
           '<div class="layer-missions">' +
             layerMissions.map((m) => {
@@ -544,10 +573,12 @@ function renderCards() {
       '<div role="button" tabindex="0" class="flashcard" data-flip="true">' +
         '<span class="pill" style="background:rgba(255,255,255,.15);color:#fff">CARD ' + (cardIndex + 1) + ' / ' + terms.length + '</span>' +
         (cardBack
-          ? '<div class="fc-explain"><strong>' + e(enTerm) + ' · ' + e(zhName) + '</strong><br/>' + e(t(enDef, zhExp)) + '</div>' +
+          ? '<div class="fc-explain"><strong>' + e(enTerm) + (isZh() ? ' · ' + e(zhName) : '') + '</strong><br/>' + e(t(enDef, zhExp)) + '</div>' +
             (enEx ? '<div class="fc-example">' + e(enEx) + '</div>' : '') +
-            '<div class="small" style="margin-top:10px;opacity:.85">' + e(zhExp) + ' · ' + e(zhAnalogy) + '</div>'
-          : '<h2>' + e(enTerm) + '</h2><h3>' + e(isZh() ? zhName : zhName + ' · ' + t('Tap to flip', '点击翻面')) + '</h3>') +
+            (isZh()
+              ? '<div class="small" style="margin-top:10px;opacity:.9">' + e(zhExp) + ' · ' + e(zhAnalogy) + '</div>'
+              : zhCollapse('查看中文释义与类比', '<strong>' + e(zhName) + '：</strong>' + e(zhExp) + '<br/><span style="opacity:.9">' + e(zhAnalogy) + '</span>'))
+          : '<h2>' + e(enTerm) + '</h2><h3>' + e(isZh() ? zhName : 'Tap card to flip for definition') + '</h3>') +
         '<span class="flip-hint">' + e(t('Tap card to flip', '点击翻面')) + '</span>' +
       '</div>' +
       '<div class="h-stack" style="justify-content:center">' +
@@ -765,7 +796,7 @@ function renderLesson(l) {
           '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">' +
             '<h3 style="margin:0 0 6px;font-size:15px">' + e(t(s.title_en, s.title)) + '</h3>' +
             '<p style="margin:0;font-size:13.5px;line-height:1.7">' + e(t(s.body_en, s.body)) + '</p>' +
-            (isEnZh() ? '<div class="step-zh">' + e(s.body) + '</div>' : '') +
+            zhCollapse('查看本节中文释义', e(s.body)) +
           '</div>'
         ).join('') +
       '</div>' +
@@ -983,10 +1014,12 @@ function toggleVoiceInput(mid) {
 }
 
 document.addEventListener('click', (ev) => {
+  if (ev.target.closest('.zh-collapse')) return;
   const b = ev.target.closest('button,[data-flip],[data-eval-check]');
   if (!b) return;
 
   if (b.dataset.lang) { state.langMode = b.dataset.lang; save(); render(); return; }
+  if (b.dataset.toggleWbZh) { sess.wbShowZh = !sess.wbShowZh; render(); return; }
   if (b.dataset.openSession) {
     initSession(b.dataset.openSession);
     navigate('session/' + b.dataset.openSession);
