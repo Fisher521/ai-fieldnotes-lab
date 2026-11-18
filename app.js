@@ -1,8 +1,9 @@
 import { weeks, lessons, sources, terms, byId } from './content.js';
 import { playbooks, studioPresets, studioToggleMeta, defaultEvalChecks, trends2026 } from './playbooks.js';
-import { missionTracks, missions } from './missions.js';
+import { pillars9, missionTracks, missions } from './missions.js';
 
 const STORAGE_KEY = 'ai_fieldnotes_learning_v1';
+const DEFAULT_BASICS = ['w1d1', 'w1d2', 'w1d3', 'w1d4', 'w1d5', 'w2d1'];
 const $= (q) => document.querySelector(q);
 
 let state = readState();
@@ -16,6 +17,8 @@ let activePlaybook = playbooks[0].id;
 let studioTab = 'agents'; // 'agents' | 'schemas' | 'prompt'
 let activeTrack = missionTracks[0].id;
 let activeMissionId = missions[0].id;
+let activeVoiceRec = null;
+let isRecordingVoice = false;
 
 function readState() {
   try {
@@ -31,8 +34,9 @@ function normalize(d) {
   const preset = studioPresets[x.studioPreset] ? x.studioPreset : 'youchina';
   const defFlags = studioPresets[preset].flags;
   const f = x.studioFlags && typeof x.studioFlags === 'object' ? x.studioFlags : {};
+  const hasSavedCompleted = Array.isArray(x.completed);
   return {
-    completed: Array.isArray(x.completed) ? x.completed.filter((v) => typeof v === 'string') : [],
+    completed: hasSavedCompleted ? x.completed.filter((v) => typeof v === 'string') : [...DEFAULT_BASICS],
     quiz: x.quiz && typeof x.quiz === 'object' ? x.quiz : {},
     drafts: x.drafts && typeof x.drafts === 'object' ? x.drafts : {},
     notes: x.notes && typeof x.notes === 'object' ? x.notes : {},
@@ -166,27 +170,50 @@ function mobileStrip(activeWeek) {
 }
 
 function side(activeWeek) {
+  const advWeeks = weeks.filter((w) => w.n >= 3);
+  const basicWeeks = weeks.filter((w) => w.n < 3);
+  const renderWeekRow = (w) => {
+    const ls = weekLessons(w.n);
+    const doneCount = ls.filter((l) => state.completed.includes(l.id)).length;
+    return (
+      '<button class="week-link ' + (activeWeek === w.n ? 'active' : '') + '" data-route="week/' + w.n + '">' +
+        '<span class="week-number">' + String(w.n).padStart(2, '0') + '</span>' +
+        '<span class="week-text">' +
+          '<strong>' + e(t(w.short_en, w.short)) + '</strong>' +
+          '<small>' + doneCount + ' / ' + ls.length + ' ' + e(t('done', '节完成')) + (isEnZh() ? ' · ' + e(w.short) : '') + '</small>' +
+        '</span>' +
+        (ls.every((l) => state.completed.includes(l.id)) ? '<span class="week-tick">✓</span>' : '') +
+      '</button>'
+    );
+  };
+
   return (
-    '<div class="side-section-label">' + e(t('YOUR LEARNING PATH', '10 周学习路径')) + '</div>' +
-    weeks.map((w) => {
-      const ls = weekLessons(w.n);
-      const doneCount = ls.filter((l) => state.completed.includes(l.id)).length;
+    '<div class="side-section-label">' + e(t('REAL PROJECT MISSIONS (5 TRACKS)', '实战项目战线（先干中学）')) + '</div>' +
+    missionTracks.map((tr, idx) => {
+      const trMissions = missions.filter((m) => m.track === tr.id);
+      const trDone = trMissions.filter((m) => state.completedMissions.includes(m.id)).length;
       return (
-        '<button class="week-link ' + (activeWeek === w.n ? 'active' : '') + '" data-route="week/' + w.n + '">' +
-          '<span class="week-number">' + String(w.n).padStart(2, '0') + '</span>' +
+        '<button class="week-link ' + (activeWeek === 0 && activeTrack === tr.id ? 'active' : '') + '" data-track="' + tr.id + '">' +
+          '<span class="week-number">M' + (idx + 1) + '</span>' +
           '<span class="week-text">' +
-            '<strong>' + e(t(w.short_en, w.short)) + '</strong>' +
-            '<small>' + doneCount + ' / ' + ls.length + ' ' + e(t('done', '节完成')) + (isEnZh() ? ' · ' + e(w.short) : '') + '</small>' +
+            '<strong>' + e(t(tr.title_en, tr.title_zh)) + '</strong>' +
+            '<small>' + trDone + ' / ' + trMissions.length + ' ' + e(t('missions', '关通关')) + '</small>' +
           '</span>' +
-          (ls.every((l) => state.completed.includes(l.id)) ? '<span class="week-tick">✓</span>' : '') +
+          (trDone === trMissions.length ? '<span class="week-tick">✓</span>' : '') +
         '</button>'
       );
     }).join('') +
+    '<div class="side-section-label" style="margin-top:18px">' + e(t('ADVANCED REFERENCE (W03–W10)', '进阶原理参考（第 3–10 周）')) + '</div>' +
+    advWeeks.map(renderWeekRow).join('') +
+    '<details class="side-details">' +
+      '<summary>▸ ' + e(t('W01–W02 Basics (Known / Optional)', 'W01–W02 基础科普（已跳过/备查）')) + '</summary>' +
+      '<div style="margin-top:6px">' + basicWeeks.map(renderWeekRow).join('') + '</div>' +
+    '</details>' +
     '<div class="side-footer">' +
       '<span class="side-section-label">' + e(t('BUILDER MANTRA', '学习方法论')) + '</span>' +
       '<p>' + t(
-        'Understand Mechanics → Weigh Trade-offs → Let AI Code → Verify With Evals.',
-        '理解原理 → 学会取舍<br/>让 AI 实现 → 自己验收<br/><br/>少背术语，多做判断。'
+        'Speak Your Call → Coach Audits Gaps → Polish English → Apply in Repo.',
+        '先说出思路 → 教练查漏纠偏<br/>打磨地道英文 → 立刻用于项目。'
       ) + '</p>' +
       '<div class="h-stack" style="margin-top:14px">' +
         '<a class="button ghost tiny" href="#/studio">🛠 ' + e(t('Project Studio', '项目工坊')) + '</a>' +
@@ -555,6 +582,12 @@ function renderLesson(l) {
       '<a class="small muted" href="#/week/' + l.week + '">← Week ' + l.week + ' · ' + e(t(w.short_en, w.short)) + '</a>' +
       '<span class="small muted">Lesson ' + l.day + ' · ' + l.min + ' min</span>' +
     '</div>' +
+    (l.week <= 2
+      ? '<div class="inline-notice" style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">' +
+          '<span>' + e(t('Already know Frontend/Backend/API/JSON basics? Jump straight into real YouChina & Aluminum B2B project coaching.', '这些基础概念已经懂了？直接跳过基础，进入你的真实项目实战教练模式。')) + '</span>' +
+          '<a class="button primary tiny" href="#/missions">⚡ ' + e(t('Skip Basics → Go to Missions', '跳过基础 → 直达实战任务 ↗')) + '</a>' +
+        '</div>'
+      : '') +
     '<div class="tr-bar">' +
       '<span class="tr-bar-info">' + e(t(
         isEnZh() ? 'Mode: English Primary + Click "译 / 中文" on any section to check Chinese' : 'Mode: Pure English (click "译 / 中文" anytime if stuck)',
@@ -745,6 +778,20 @@ Please:
 3. Ask me 1 sharp follow-up question to stretch my thinking.`;
 }
 
+function buildBilingualConfirmation(m, draft, evRec) {
+  const hitRules = m.rubric.filter((_, i) => evRec.hits[i]);
+  const missRules = m.rubric.filter((_, i) => !evRec.hits[i]);
+  const enConfirm = hitRules.length
+    ? 'Clean English Intent: For "' + m.title_en + '", your plan emphasizes: ' + hitRules.map((x) => x.pillar_en).join('; ') + '.' +
+      (missRules.length ? ' Next step to add: ' + missRules.map((x) => x.pillar_en).join(' & ') + '.' : ' All 4 engineering pillars are covered!')
+    : 'Clean English Intent: You shared an initial idea ("' + draft.slice(0, 140) + (draft.length > 140 ? '…' : '') + '"). Let us anchor it around the 4 architecture pillars below.';
+  const zhConfirm = hitRules.length
+    ? '中文意图确认：针对「' + m.title_zh + '」，你的核心思路已经命中：' + hitRules.map((x) => x.pillar_zh).join('、') + '。' +
+      (missRules.length ? '建议再补齐：' + missRules.map((x) => x.pillar_zh).join('、') + '。' : '4 项核心工程要素已全部对齐！')
+    : '中文意图确认：已收到你的初步思考，建议对照下方 4 个核心工程卡点把指令说具体。';
+  return { enConfirm, zhConfirm };
+}
+
 function renderMissions(arg) {
   if (arg) {
     const found = missions.find((x) => x.id === arg);
@@ -786,6 +833,18 @@ function renderMissions(arg) {
       '<div class="stat-card"><span class="stat-label">' + e(t('Coach Reviews Run', '已完成点评')) + '</span><strong>' + evalTotal + ' <small>/ ' + missions.length + '</small></strong></div>' +
       '<div class="stat-card"><span class="stat-label">' + e(t('Terms Mastered', '已掌握术语')) + '</span><strong>' + state.learned.length + ' <small>/ ' + terms.length + '</small></strong></div>' +
       '<div class="stat-card"><span class="stat-label">' + e(t('Mistakes to Review', '待复盘错题')) + '</span><strong>' + getMistakes().length + ' <small>' + e(t('items', '道')) + '</small></strong></div>' +
+    '</div>' +
+    '<h2 class="section-heading">' + e(t('9-Pillar AI Engineering Mastery (100% Covered Across 16 Missions)', '9 大核心 AI Engineering 能力全景（16 个实战任务已 100% 覆盖）')) + '</h2>' +
+    '<div class="pillar-strip">' +
+      pillars9.map((pl) => {
+        const doneP = pl.missions.some((id) => state.completedMissions.includes(id));
+        const firstM = pl.missions[0];
+        return (
+          '<button type="button" class="pillar-pill ' + (doneP ? 'done' : '') + '" data-mission="' + firstM + '">' +
+            (doneP ? '✓ ' : '○ ') + e(t(pl.name_en, pl.name_zh)) +
+          '</button>'
+        );
+      }).join('') +
     '</div>' +
     '<h2 class="section-heading">' + e(t('Choose a Real Mac Project Track', '选择你 Mac 上的真实项目战线')) + '</h2>' +
     '<div class="track-tabs">' +
@@ -844,48 +903,67 @@ function renderMissions(arg) {
       '<section class="notes-block" style="margin-top:24px;padding-top:22px">' +
         '<div class="subheading"><span class="count">YOUR CALL</span><h3>' + e(t('2. Share Your Thought (Tap Starters or Dictate on iPhone 🎙)', '2. 分享你的思路（手机端可点快捷句或语音听写 🎙）')) + '</h3></div>' +
         '<p class="small muted">' + e(t('What should your AI / team do here, who owns which step, and what guardrail prevents failure?', '遇到这个状况，你会怎么指挥 Agent？谁负责哪一步？用什么门禁防出错？')) + '</p>' +
+        '<div class="voice-row">' +
+          '<button type="button" class="voice-btn ' + (isRecordingVoice ? 'recording' : '') + '" data-voice-mission="' + m.id + '">' +
+            (isRecordingVoice ? '🔴 ' + e(t('Listening (EN)... Tap to Stop', '正在听写英文… 点击停止')) : '🎙 ' + e(t('Speak in English (点击说英文)', 'Speak in English · 点击说英文'))) +
+          '</button>' +
+          '<span class="small muted">' + e(t('Or tap your iPhone keyboard 🎙 mic / starter chips below', '手机也可直接用苹果键盘右下角 🎙 语音转英文')) + '</span>' +
+        '</div>' +
         '<div class="starter-chips">' +
           m.prompts_en.map((sp) =>
             '<button type="button" class="starter-chip" data-starter-text="' + e(sp) + '">+ ' + e(sp) + '</button>'
           ).join('') +
         '</div>' +
         '<textarea id="mission-draft" class="coach-textarea" data-mission-draft="' + m.id + '" placeholder="' + e(t(
-          'Type or dictate your thought in English (or mixed EN+中文)... e.g., "First run a gap check on schema, reject hand-typed prices, and verify raw reconcile output."',
-          '用英文、中文或中英混写你的判断思路……例如：“先做底座缺口检查，禁止在页面里手写价格，最后看 reconcile 原始输出验收。”'
+          'Speak or type your thought in English (or mixed EN+中文)... e.g., "First run a gap check on schema, reject hand-typed prices, and verify raw reconcile output."',
+          '用英文语音/打字或中英混写你的判断思路……例如：“先做底座缺口检查，禁止在页面里手写价格，最后看 reconcile 原始输出验收。”'
         )) + '">' + e(draft) + '</textarea>' +
         '<div class="h-stack" style="margin-top:14px">' +
-          '<button type="button" class="button primary" data-eval-mission="' + m.id + '">⚡ ' + e(t('Evaluate & Coach My Thinking', '立即评估与纠偏打分')) + '</button>' +
+          '<button type="button" class="button primary" data-eval-mission="' + m.id + '">⚡ ' + e(t('Evaluate & Confirm (EN + 中文)', '评估并做中英双语确认 ⚡')) + '</button>' +
           '<button type="button" class="button secondary" data-copy-mission-packet="' + m.id + '">📋 ' + e(t('Copy Coaching Packet for Live AI Sparring', '复制完整提问包发给 AI 深度对练')) + '</button>' +
           '<button type="button" class="button ' + (isDone ? 'secondary' : 'ghost') + '" data-complete-mission="' + m.id + '">' + (isDone ? '✓ ' + e(t('Mission Done', '本关已通关')) : e(t('Mark Mission Done', '标记通关'))) + '</button>' +
         '</div>' +
       '</section>' +
       (evalRec
-        ? '<section class="coach-report">' +
-            '<div class="between">' +
-              '<h3 style="margin:0;font-size:17px">⚡ ' + e(t('Coach Evaluation & Correction', '教练评估与纠偏报告')) + '</h3>' +
-              '<span class="pill ' + (evalRec.score >= 3 ? '' : 'gold') + '">' + evalRec.score + ' / ' + evalRec.total + ' ' + e(t('Pillars Hit', '项命中')) + '</span>' +
-            '</div>' +
-            '<div class="pillar-list">' +
-              m.rubric.map((rule, idx) => {
-                const hit = Boolean(evalRec.hits[idx]);
-                return (
-                  '<div class="pillar-row ' + (hit ? 'hit' : 'miss') + '">' +
-                    '<strong>' + (hit ? '✓ ' : '⚠️ ') + e(t(rule.pillar_en, rule.pillar_zh)) + '</strong>' +
-                    '<div>' + e(hit ? t(rule.hit_en, rule.hit_zh) : t(rule.miss_en, rule.miss_zh)) + '</div>' +
-                    (isEnZh() ? '<div class="tr-subline" style="color:inherit;opacity:.82">' + e(hit ? rule.hit_zh : rule.miss_zh) + '</div>' : '') +
-                  '</div>'
-                );
-              }).join('') +
-            '</div>' +
-            '<div class="outcome" style="margin:14px 0">' +
-              '<strong>' + e(t('Principal Engineer English Polish (Copy & Use With Cursor / Claude / Codex)', '硅谷架构师地道英文表达升级（可直接用来指挥 AI）')) + '</strong>' +
-              '<ul class="polish-list">' + m.english_polish.map((line) => '<li>' + e(line) + '</li>').join('') + '</ul>' +
-            '</div>' +
-            '<div class="takeaway" style="margin-top:12px">' +
-              '✦ <strong>' + e(t('Gold-Standard Architecture Call: ', '标准工程级决策参考：')) + '</strong>' + e(t(m.gold_en, m.gold_zh)) +
-              trToggleBlock(m.id + '-gold', m.gold_en, m.gold_zh) +
-            '</div>' +
-          '</section>'
+        ? (() => {
+            const conf = buildBilingualConfirmation(m, draft, evalRec);
+            return (
+              '<section class="coach-report">' +
+                '<div class="between">' +
+                  '<h3 style="margin:0;font-size:17px">⚡ ' + e(t('Coach Confirmation & Bilingual Evaluation (EN + 中文)', '中英双语意图确认与工程纠偏')) + '</h3>' +
+                  '<span class="pill ' + (evalRec.score >= 3 ? '' : 'gold') + '">' + evalRec.score + ' / ' + evalRec.total + ' ' + e(t('Pillars Hit', '项命中')) + '</span>' +
+                '</div>' +
+                '<div class="confirm-card" style="margin-top:14px">' +
+                  '<div><strong>English Confirmation:</strong> ' + e(conf.enConfirm) + '</div>' +
+                  '<div style="margin-top:6px;color:#465a4f"><strong>中文确认：</strong>' + e(conf.zhConfirm) + '</div>' +
+                '</div>' +
+                '<div class="pillar-list">' +
+                  m.rubric.map((rule, idx) => {
+                    const hit = Boolean(evalRec.hits[idx]);
+                    return (
+                      '<div class="pillar-row ' + (hit ? 'hit' : 'miss') + '">' +
+                        '<strong>' + (hit ? '✓ ' : '⚠️ ') + e(rule.pillar_en) + ' · ' + e(rule.pillar_zh) + '</strong>' +
+                        '<div>' + e(hit ? rule.hit_en : rule.miss_en) + '</div>' +
+                        '<div class="tr-subline" style="color:inherit;opacity:.85">' + e(hit ? rule.hit_zh : rule.miss_zh) + '</div>' +
+                      '</div>'
+                    );
+                  }).join('') +
+                '</div>' +
+                '<div class="outcome" style="margin:14px 0">' +
+                  '<strong>' + e(t('Principal Engineer English Polish (Copy & Direct Cursor / Claude / Codex)', '硅谷架构师地道英文表达升级（可直接复制去指挥 AI）')) + '</strong>' +
+                  '<ul class="polish-list">' +
+                    m.english_polish.map((line) =>
+                      '<li>' + e(line) + ' <button type="button" class="tr-toggle" style="margin-left:6px" data-copy-text="' + e(line.replace(/^"|"$/g, '')) + '">' + e(t('Copy', '复制')) + '</button></li>'
+                    ).join('') +
+                  '</ul>' +
+                '</div>' +
+                '<div class="takeaway" style="margin-top:12px">' +
+                  '✦ <strong>' + e(t('Gold-Standard Architecture Call: ', '标准工程级决策参考：')) + '</strong>' + e(m.gold_en) +
+                  '<div class="tr-subline" style="color:#2d5a3f;margin-top:6px">' + e(m.gold_zh) + '</div>' +
+                '</div>' +
+              '</section>'
+            );
+          })()
         : '') +
       '<div class="lesson-footer">' +
         '<a class="button ghost tiny" href="#/week/' + m.weekRef + '">📚 ' + e(t('Deep Dive: Week ' + m.weekRef + ' Theory ↗', '回看第 ' + m.weekRef + ' 周底层原理 ↗')) + '</a>' +
@@ -1335,9 +1413,70 @@ function toggleArr(arr, id) {
   else arr.splice(idx, 1);
 }
 
+function toggleVoiceInput(mid) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    const ta = $('#mission-draft');
+    if (ta) ta.focus();
+    notice(t('Tap your iPhone keyboard 🎙 mic to dictate English directly!', '请直接点击手机输入法上的 🎙 麦克风进行英文语音输入'));
+    return;
+  }
+  if (isRecordingVoice && activeVoiceRec) {
+    isRecordingVoice = false;
+    try { activeVoiceRec.stop(); } catch {}
+    render();
+    return;
+  }
+  const rec = new SR();
+  rec.lang = 'en-US';
+  rec.continuous = true;
+  rec.interimResults = false;
+  activeVoiceRec = rec;
+  isRecordingVoice = true;
+  render();
+
+  rec.onresult = (event) => {
+    let spoken = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) spoken += event.results[i][0].transcript + ' ';
+    }
+    const clean = spoken.trim();
+    if (!clean) return;
+    const prev = (state.missionDrafts[mid] || '').trim();
+    const next = prev ? prev + ' ' + clean : clean;
+    state.missionDrafts[mid] = next;
+    save();
+    const ta = $('#mission-draft');
+    if (ta) ta.value = next;
+  };
+  rec.onerror = () => {
+    isRecordingVoice = false;
+    activeVoiceRec = null;
+    render();
+    notice(t('Mic permission unavailable—use iPhone keyboard 🎙 mic or type.', '浏览器语音权限未开启，可用手机键盘 🎙 听写或直接打字'));
+  };
+  rec.onend = () => {
+    isRecordingVoice = false;
+    activeVoiceRec = null;
+    render();
+  };
+  try {
+    rec.start();
+  } catch {
+    isRecordingVoice = false;
+    activeVoiceRec = null;
+    render();
+  }
+}
+
 document.addEventListener('click', (ev) => {
   const b = ev.target.closest('button,[data-flip],[data-eval-check]');
   if (!b) return;
+
+  if (b.dataset.voiceMission) {
+    toggleVoiceInput(b.dataset.voiceMission);
+    return;
+  }
 
   if (b.dataset.lang) {
     state.langMode = b.dataset.lang;
@@ -1631,5 +1770,5 @@ window.addEventListener('hashchange', () => {
 
 render();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').then((reg) => reg.update()).catch(() => {}));
 }
