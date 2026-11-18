@@ -1,3 +1,54 @@
+export const systemSynthesisLayers = [
+  {
+    id: 'layer1',
+    num: '01',
+    title_en: 'Truth, Data & RAG Foundation',
+    title_zh: '第一层 · 真值底座与检索层 (Truth & Retrieval)',
+    sub_en: 'LLMs reason over language; databases, schemas, and hybrid RAG supply verifiable facts.',
+    sub_zh: '大模型只管语言推理；数据库、Factcell 单元、元数据与混合检索负责供给真实不过期的证据。',
+    law_en: 'Universal Law: Separate stored truth from UI rendering, preserve NULL honesty internally, and retrieve exact + semantic evidence with freshness metadata BEFORE generating.',
+    law_zh: '通用铁律：存储真值与页面渲染分离；库内缺数如实记 NULL（前台隐去）；永远用“结构切块 + 时效过滤 + 混合检索重排”先拿证据再说话。',
+    missions: ['m1_1', 'm1_2', 'm4_2', 'm4_3', 'm5_1'],
+    weekRefs: [1, 4]
+  },
+  {
+    id: 'layer2',
+    num: '02',
+    title_en: 'Context, State, MCP & Skills',
+    title_zh: '第二层 · 上下文、状态与能力边界层 (Context & Capabilities)',
+    sub_en: 'Control exactly what enters the model’s workbench at each step—isolated, resumable, and permission-scoped.',
+    sub_zh: '精确控制每次模型调用工作台里看到的内容：冷启动极简、断点可续、外部网页防注入、写操作加幂等。',
+    law_en: 'Universal Law: Context is an expensive workbench, not a trash bin. Keep cold-start compact, resume from task_state checkpoints, connect tools via MCP + Skills, and isolate untrusted inputs.',
+    law_zh: '通用铁律：上下文是昂贵的工作台不是垃圾桶——冷启动只读精简状态，用 task_state 断点续跑、Skill 打包 SOP、MCP 接工具，并对抓来的网页与写操作加硬锁。',
+    missions: ['m3_1', 'm5_2', 'm5_3'],
+    weekRefs: [3, 5, 7]
+  },
+  {
+    id: 'layer3',
+    num: '03',
+    title_en: 'Workflow & Multi-Agent Orchestration',
+    title_zh: '第三层 · 工作流与多智能体调度层 (Orchestration)',
+    sub_en: 'Keep predictable flows deterministic; reserve reasoning tiers and autonomous loops only for genuine ambiguity.',
+    sub_zh: '确定性步骤交代码/工作流，按判断力分配模型档位，复用成熟检查点，不把固定流程硬拆成自由群聊。',
+    law_en: 'Universal Law: Run 80% deterministic workflows + 20% bounded LLMs. Match model cost to judgment difficulty, reuse validated Checkpoints across markets, and isolate parallel worktrees safely.',
+    law_zh: '通用铁律：80% 确定性编排 + 20% 受控模型；顶级模型只管 Plan/Audit，机械工作下放；横向复用已验收 Checkpoints，并行开发严格隔离 Worktree 与远端基准。',
+    missions: ['m2_1', 'm2_2', 'm3_2', 'm4_1'],
+    weekRefs: [6, 10]
+  },
+  {
+    id: 'layer4',
+    num: '04',
+    title_en: 'Harness, Trace & Evals Gate',
+    title_zh: '第四层 · 工程护栏、观测与验收层 (Harness & Evals)',
+    sub_en: 'Replace hope and "looks good" vibes with hard blockers, approval ledgers, trace debugging, and regression gates.',
+    sub_zh: '用代码级硬阻断、审批账本、执行轨迹 Trace 和金标准回归门禁替代“靠感觉试一试”。',
+    law_en: 'Universal Law: Never put safety or truth in polite prompts alone. Enforce boundaries in code harnesses, audit raw execution traces by layer, and gate every release on Golden Evals.',
+    law_zh: '通用铁律：安全与真实性绝不能只靠 Prompt 里写“请务必认真”；必须用代码护栏和审批红线锁死边界，出错先查 Trace 分层定位，再过金标准零退化门禁。',
+    missions: ['m1_3', 'm2_3', 'm3_3', 'm5_4'],
+    weekRefs: [8, 9]
+  }
+];
+
 export const pillars9 = [
   { id: 'rag', name_en: 'RAG Engineering', name_zh: 'RAG 检索工程', missions: ['m1_1', 'm5_1'] },
   { id: 'context', name_en: 'Context Engineering', name_zh: '上下文工程', missions: ['m3_1', 'm1_2'] },

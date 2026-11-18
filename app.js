@@ -1,6 +1,6 @@
 import { weeks, lessons, sources, terms, byId } from './content.js';
 import { playbooks, studioPresets, studioToggleMeta, defaultEvalChecks, trends2026 } from './playbooks.js';
-import { pillars9, missionTracks, missions } from './missions.js';
+import { systemSynthesisLayers, pillars9, missionTracks, missions } from './missions.js';
 
 const STORAGE_KEY = 'ai_fieldnotes_learning_v1';
 const DEFAULT_BASICS = ['w1d1', 'w1d2', 'w1d3', 'w1d4', 'w1d5', 'w2d1'];
@@ -216,6 +216,7 @@ function side(activeWeek) {
         '先说出思路 → 教练查漏纠偏<br/>打磨地道英文 → 立刻用于项目。'
       ) + '</p>' +
       '<div class="h-stack" style="margin-top:14px">' +
+        '<a class="button ghost tiny" href="#/map">🗺 ' + e(t('System Tree', '4 层系统图')) + '</a>' +
         '<a class="button ghost tiny" href="#/studio">🛠 ' + e(t('Project Studio', '项目工坊')) + '</a>' +
         '<a class="button ghost tiny" href="#/playbooks">⚡ ' + e(t('Playbooks', '实战攻略')) + '</a>' +
         '<a class="button ghost tiny" href="#/resources">↗ ' + e(t('Sources', '学习资源')) + '</a>' +
@@ -823,6 +824,7 @@ function renderMissions(arg) {
         )) + '</p>' +
         '<div class="h-stack">' +
           '<a href="#mission-workspace" class="button" data-scroll="mission-workspace">⚡ ' + e(t('Jump to Active Mission', '直达当前实战任务')) + '</a>' +
+          '<a href="#/map" class="button" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)">🗺 ' + e(t('4-Layer System Tree', '查看散点归宗系统图')) + '</a>' +
           '<a href="#/studio" class="button" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)">🛠 ' + e(t('Project Studio', '项目架构工坊')) + '</a>' +
         '</div>' +
       '</div>' +
@@ -965,6 +967,19 @@ function renderMissions(arg) {
             );
           })()
         : '') +
+      (() => {
+        const synLayer = systemSynthesisLayers.find((ly) => ly.missions.includes(m.id)) || systemSynthesisLayers[0];
+        return (
+          '<div class="synthesis-card">' +
+            '<div class="between">' +
+              '<strong>🧭 ' + e(t('System Convergence: Layer ' + synLayer.num + ' — ' + synLayer.title_en, '散点归宗：本关属于系统架构第 ' + synLayer.num + ' 层 — ' + synLayer.title_zh)) + '</strong>' +
+              '<a class="button ghost tiny" href="#/map">🗺 ' + e(t('Open Full 4-Layer System Tree', '打开完整 4 层系统大图 ↗')) + '</a>' +
+            '</div>' +
+            '<div>' + e(t(synLayer.law_en, synLayer.law_zh)) + '</div>' +
+            (isEnZh() ? '<div class="tr-subline">' + e(synLayer.law_zh) + '</div>' : '') +
+          '</div>'
+        );
+      })() +
       '<div class="lesson-footer">' +
         '<a class="button ghost tiny" href="#/week/' + m.weekRef + '">📚 ' + e(t('Deep Dive: Week ' + m.weekRef + ' Theory ↗', '回看第 ' + m.weekRef + ' 周底层原理 ↗')) + '</a>' +
         '<a class="button secondary tiny" href="#/studio">🛠 ' + e(t('Apply in Project Studio ↗', '去项目工坊生成 AGENTS.md ↗')) + '</a>' +
@@ -1136,46 +1151,64 @@ function renderStudio() {
 }
 
 function renderMap() {
-  const layers = [
-    {
-      label: t('01 / Software & LLM Foundations', '01 / 软件与模型基础'),
-      sub: t('Understand system layers and where model weights end', '理解系统的主要组成与能力边界'),
-      items: [[t('System Architecture', '系统架构'), 1], [t('LLM Mechanics', 'LLM 原理'), 2]]
-    },
-    {
-      label: t('02 / Knowledge & Context', '02 / 知识与上下文'),
-      sub: t('Curate the exact verified evidence inside each call', '管理模型当前能看到的真实证据'),
-      items: [[t('Prompt & Context Eng.', 'Prompt / Context'), 3], [t('RAG & Hybrid Search', 'RAG / Retrieval'), 4]]
-    },
-    {
-      label: t('03 / Action & Orchestration', '03 / 行动与协作'),
-      sub: t('Combine deterministic workflows with bounded agents', '让模型在受约束的环境中行动'),
-      items: [[t('Agent Loop', 'Agent Loop'), 5], [t('Workflow vs Multi-Agent', '架构模式'), 6], [t('Memory / MCP / Skills', 'Memory / MCP / Skills'), 7]]
-    },
-    {
-      label: t('04 / Reliability & Verification', '04 / 可靠性与验收'),
-      sub: t('Prevent regressions with Harnesses, Traces, and Evals', '让系统能被控制、观测、纠错'),
-      items: [[t('Harness Engineering', 'Harness'), 8], [t('Evals & Observability', 'Evals / Observability'), 9], [t('Capstone System Design', '系统设计'), 10]]
-    }
-  ];
+  const synthDone = state.completedMissions.length;
+  const synthPct = percentage(synthDone, missions.length);
 
   return (
     pageHeading(
-      'YOUR MENTAL MODEL',
-      t('AI Systems Knowledge Map', 'AI 系统知识地图'),
-      t('Not a rigid textbook hierarchy—an architectural checklist for diagnosing real problems. Click any block to open that week.', '这不是唯一的技术分层，而是一张帮你做架构定位的思考地图。点击节点直接跳转对应周次。')
+      'SYSTEM SYNTHESIS · FROM SCATTERED CASES TO ONE ARCHITECTURE',
+      t('Your Living 4-Layer System Architecture Tree', '散点归宗全景图：从具体项目卡点回到完整 4 层系统结构'),
+      t(
+        'Every scattered YouChina & Aluminum B2B mission snaps back into one of these 4 universal engineering layers. Complete missions to light up the tree and collect reusable architecture laws & English commands.',
+        '你做的每一道分散实战（苏州空骨架、Worktree、6 语种、Display-Gap 等），最终都会自动归宗到下面这 4 层通用 AI 工程架构树。每打通一关，节点自动点亮并为你沉淀一条跨项目通用铁律。'
+      )
     ) +
-    '<div class="inline-notice">' + e(t(
-      'Ask 5 questions for every feature: (1) Is input/intent clear? (2) What facts must come from DB/RAG? (3) Deterministic Workflow or dynamic Agent? (4) What tool permissions/gates exist? (5) How do Evals & Traces prove it works?',
-      '遇到新需求时按顺序问：① 用户问题是否清晰？② 哪些事实需要从数据库或检索获取？③ 流程固定还是需要模型自主决策？④ 需要哪些工具与权限？⑤ 怎样记录、恢复、检验任务？'
-    )) + '</div>' +
-    layers.map((layer, i) =>
-      '<div class="map-layer">' +
-        '<div class="map-head"><div class="map-index">' + (i + 1) + '</div><div><h3>' + e(layer.label) + '</h3><p>' + e(layer.sub) + '</p></div></div>' +
-        '<div class="map-items">' + layer.items.map((x) => '<button class="map-item" data-route="week/' + x[1] + '">' + e(x[0]) + '　↗</button>').join('') + '</div>' +
-      '</div>' +
-      (i < layers.length - 1 ? '<div class="flow-arrow">↓</div>' : '')
-    ).join('')
+    '<div class="card" style="margin-bottom:18px">' +
+      '<div class="between"><strong>' + e(t('System Architecture Synthesis Progress', '系统化能力归宗进度')) + '</strong><span class="pill">' + synthDone + ' / ' + missions.length + ' ' + e(t('Missions Synthesized', '关已归宗')) + ' (' + synthPct + '%)</span></div>' +
+      '<div style="margin-top:10px">' + bar(synthPct) + '</div>' +
+    '</div>' +
+    systemSynthesisLayers.map((layer, i) => {
+      const layerMissions = layer.missions.map((id) => missions.find((x) => x.id === id)).filter(Boolean);
+      const layerDone = layerMissions.filter((m) => state.completedMissions.includes(m.id)).length;
+      const unlockedCmds = layerMissions
+        .filter((m) => state.completedMissions.includes(m.id) || state.missionEvals[m.id])
+        .map((m) => m.english_polish[0]);
+
+      return (
+        '<div class="map-layer">' +
+          '<div class="between">' +
+            '<div class="map-head" style="margin-bottom:6px">' +
+              '<div class="map-index">' + e(layer.num) + '</div>' +
+              '<div><h3>' + e(t(layer.title_en, layer.title_zh)) + '</h3><p>' + e(t(layer.sub_en, layer.sub_zh)) + '</p></div>' +
+            '</div>' +
+            '<span class="pill ' + (layerDone === layerMissions.length ? '' : 'gold') + '">' + layerDone + ' / ' + layerMissions.length + ' ' + e(t('lit', '已点亮')) + '</span>' +
+          '</div>' +
+          '<div class="layer-law">' +
+            '<strong>' + e(t(layer.law_en, layer.law_zh)) + '</strong>' +
+            (isEnZh() ? '<div class="tr-subline">' + e(layer.law_zh) + '</div>' : '') +
+          '</div>' +
+          '<div class="layer-missions">' +
+            layerMissions.map((m) => {
+              const done = state.completedMissions.includes(m.id);
+              const ev = state.missionEvals[m.id];
+              return (
+                '<button type="button" class="layer-chip ' + (done ? 'done' : '') + '" data-mission="' + m.id + '">' +
+                  '<span>' + (done ? '✓' : '○') + '</span>' +
+                  '<span>' + e(t(m.title_en, m.title_zh)) + (ev ? ' (' + ev.score + '/' + ev.total + ')' : '') + '</span>' +
+                '</button>'
+              );
+            }).join('') +
+          '</div>' +
+          (unlockedCmds.length
+            ? '<div class="unlocked-box"><strong>' + e(t('Unlocked Commands in This Layer:', '本层已解锁的指挥金句：')) + '</strong> ' + unlockedCmds.map((c) => e(c)).join(' · ') + '</div>'
+            : '') +
+        '</div>' +
+        (i < systemSynthesisLayers.length - 1 ? '<div class="flow-arrow">↓</div>' : '')
+      );
+    }).join('') +
+    '<div class="card" style="margin-top:20px">' +
+      '<div class="between"><div><strong>' + e(t('Ready to Apply All 4 Layers to Your Next Feature?', '准备把这 4 层架构直接套用到下一个新功能？')) + '</strong><p style="margin:6px 0 0">' + e(t('Open Project Studio to generate a custom AGENTS.md, JSON Schemas, and Golden Evals for any new product.', '打开 Project Studio 即可勾选约束条件，直接导出新项目专属的 AGENTS.md 与验收清单。')) + '</p></div><a class="button primary tiny" href="#/studio">🛠 ' + e(t('Open Project Studio ↗', '打开项目工坊 ↗')) + '</a></div>' +
+    '</div>'
   );
 }
 

@@ -761,6 +761,53 @@ code {
 .side-details summary { cursor: pointer; font-size: 11px; font-weight: 700; color: #8b998f; padding: 4px 12px; list-style: none; }
 .side-details summary::-webkit-details-marker { display: none; }
 
+.synthesis-card {
+  margin-top: 18px;
+  padding: 16px 18px;
+  background: #f4f7f9;
+  border: 1px solid #d5e0e8;
+  border-left: 4px solid #487796;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.synthesis-card strong { color: #24475e; display: block; margin-bottom: 4px; }
+.layer-missions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.layer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+  text-align: left;
+}
+.layer-chip:hover { border-color: #9dc0aa; background: #f6fbf7; }
+.layer-chip.done { border-color: #7ab38e; background: #e8f5ec; color: #1e5337; }
+.layer-law {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: #f7f8f2;
+  border: 1px solid #e3e7d8;
+  border-radius: 10px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #3e5245;
+}
+.unlocked-box {
+  margin-top: 10px;
+  padding: 10px 13px;
+  background: #fff;
+  border: 1px dashed #c8d6cc;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #466050;
+}
+
 .mobile-bottom-nav { display: none; }
 @media (max-width: 960px) { .studio-grid { grid-template-columns: 1fr; } }
 
