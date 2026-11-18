@@ -1141,3 +1141,292 @@ export const missions = [
     ]
   }
 ];
+
+export const missionDrills = {
+  m1_1: {
+    q_en: 'All cards passed, yet the Suzhou page rendered empty. What should you do FIRST?',
+    q_zh: '单卡测试全过，但苏州页渲染是空的。你第一步怎么拍板？',
+    options_en: [
+      'Downgrade the precheck warning so the page ships faster',
+      'Halt copywriting and run a foundation gap check across schema, authority-map, and bindings'
+    ],
+    options_zh: [
+      '把前置检查降级成警告，先让页面发上去再说',
+      '立即停笔，先跑底座缺口检查（Schema、权威映射与 Slot 绑定）'
+    ],
+    answer: 1,
+    why_en: 'If the shared foundation lacks a dining rule or binding, copy and card tests produce silent empty skeletons.',
+    why_zh: '底座缺少餐饮规则或绑定支撑时，强行跳过只会得到线上空骨架。',
+    zh_prompt: '写任何城市文案前，先跨 schema、authority-map 和 slot 绑定跑一次底座缺口预检。',
+    chunks: ['Before drafting any city copy,', 'run a foundation gap check', 'across schema,', 'authority-map,', 'and slot bindings.']
+  },
+  m1_2: {
+    q_en: 'An agent wants to hardcode Shanghai metro prices inside TSX to save 20 minutes. Your call?',
+    q_zh: 'Agent 想直接在 TSX 页面里手写上海地铁票价来省 20 分钟，怎么处理？',
+    options_en: [
+      'Reject it: route missing prices into factcell/INBOX.md and emit via data/facts/ slots',
+      'Allow it temporarily as long as the price looks accurate today'
+    ],
+    options_zh: [
+      '直接否决：把缺的事实写入 factcell/INBOX.md，统一从真值槽位注入',
+      '只要今天看着是对的，先写进代码临时上线'
+    ],
+    answer: 0,
+    why_en: 'Facts in TSX rot silently and break single-source auditing; Factcell keeps source, status, and expiry.',
+    why_zh: '写死在代码里的价格会悄悄过期，只有进 Factcell 才带来源与过期时间。',
+    zh_prompt: '不要在页面文案里手写价格或时间——先把每条事实通过 data/facts/ 路由。',
+    chunks: ['Do not hardcode', 'prices or hours in page copy—', 'route every fact', 'through data/facts/ first.']
+  },
+  m4_2: {
+    q_en: '200 suppliers lack MOQ and customs rows are empty. What should the buyer UI display?',
+    q_zh: '200 家供应商缺 MOQ，且海关出货表还是空的。买家前台怎么展示？',
+    options_en: [
+      'Render "MOQ: 0", "Pending", and a polite disclaimer so cards stay aligned',
+      'Keep NULL in DB, omit missing blocks completely on UI, and strip Verified/customs claims'
+    ],
+    options_zh: [
+      '前台显示“MOQ: 0”、“待核实”和一行免责声明让卡片对齐',
+      '库内保留 NULL，前台缺数整块隐藏不渲染，拿掉无证 Verified 与海关话术'
+    ],
+    answer: 1,
+    why_en: 'Buyer Display-Gap Policy keeps internal truth honest (NULL) while keeping customer screens clean and trustworthy.',
+    why_zh: '库内保真（NULL 不写 0），前台洁净（缺数即隐藏，绝不用占位假词欺骗买家）。',
+    zh_prompt: '库内缺失字段保持为 NULL——绝不要把缺 MOQ 改写成 0。',
+    chunks: ['Keep missing fields', 'as NULL in the database—', 'never rewrite', 'missing MOQ as 0.']
+  },
+  m4_3: {
+    q_en: '/llms-full.txt still contains old mock supplier profiles. Why is this urgent for GEO?',
+    q_zh: '/llms-full.txt 里还留着早期假供应商数据，为什么 GEO 必须立刻清掉它？',
+    options_en: [
+      'AI search engines crawl /llms-full.txt as ground truth; replace mocks from verified DB rows (no contacts)',
+      'Keep mock rows because bots mainly care about HTML CSS layout'
+    ],
+    options_zh: [
+      'AI 搜索引擎直接抓 /llms-full.txt 当真值；必须用真值库替换假数据且不晒联系方式',
+      '留着假数据问题不大，因为 AI 搜索引擎主要看网页 CSS 排版'
+    ],
+    answer: 0,
+    why_en: 'Purging mocks and emitting USCC-backed rows from lvb2b_local stops AI engines from citing fake supplier info.',
+    why_zh: '/llms-full.txt 是给大模型看的真值入口，必须由 lvb2b_local 实时输出且导流 RFQ。',
+    zh_prompt: '/llms-full.txt 直接喂给 AI 搜索引擎——清掉假档案并从核实过的 lvb2b_local 输出。',
+    chunks: ['/llms-full.txt feeds AI search engines directly—', 'purge all mock profiles', 'and emit from verified', 'lvb2b_local rows.']
+  },
+  m5_1: {
+    q_en: 'Pure vector search keeps missing exact alloy codes like "6063-T5" and "144-hour transit". Fix?',
+    q_zh: '纯向量检索总漏掉精确型号 6063-T5 和 144 小时免签规则，怎么改检索链？',
+    options_en: [
+      'Stuff the entire PDF database into the system prompt',
+      'Use logical chunking + metadata date filters + Hybrid Search (BM25 + vector) + Reranking'
+    ],
+    options_zh: [
+      '把整本 PDF 资料全塞进大模型的 System Prompt 里',
+      '按逻辑切块 + 时效元数据过滤 + 混合检索（BM25+向量）+ 二次重排'
+    ],
+    answer: 1,
+    why_en: 'Vectors understand synonyms; BM25 catches exact codes; metadata blocks stale docs; reranking picks top 4.',
+    why_zh: '向量管语义近义、BM25 抓精确编号、元数据拦过期文档、重排锁定前 4 条。',
+    zh_prompt: '纯向量检索会丢掉 6063-T5 这类精确编号——切到混合检索（BM25 + 向量）。',
+    chunks: ['Pure vector search drops', 'exact codes like 6063-T5—', 'switch to Hybrid Search', '(BM25 + embeddings).']
+  },
+  m3_1: {
+    q_en: 'Starting a fresh session for YouChina SEO: what should the agent read on startup?',
+    q_zh: '新开会话接着跑 YouChina SEO，开局应该让 Agent 读什么？',
+    options_en: [
+      'Load ONLY the 5 compact state/index files, ignore chat history & legacy docs, filter CSVs by module',
+      'Read all 40 old memos and full chat history so it knows every detail'
+    ],
+    options_zh: [
+      '只读 5 个精简状态与索引文件，忽略旧聊天和过时文档，CSV 按当前模块过滤',
+      '把 40 份旧备忘和长聊天记录全读一遍，信息越全越好'
+    ],
+    answer: 0,
+    why_en: 'Dumping 40 outdated memos triggers Context Rot and makes agents follow superseded strategy.',
+    why_zh: '塞入几十份旧文档会引发上下文腐烂，让模型按去年过时策略执行。',
+    zh_prompt: '会话启动时只读 5 个精简状态与索引文件——跳过历史聊天记录。',
+    chunks: ['At session startup,', 'read only the 5 compact', 'state and index files—', 'skip chat history.']
+  },
+  m5_2: {
+    q_en: 'Scraped pages hide prompt injections, and CMS POST retries on timeout published 3 copies. Fix?',
+    q_zh: '抓来的网页藏着注入指令，且推 CMS 超时重试发了 3 篇重复文章。怎么加锁？',
+    options_en: [
+      'Add "please do not inject or duplicate" to the end of the prompt',
+      'Wrap scraped text in <untrusted_source> (no write tools) + idempotent slug upsert in draft mode'
+    ],
+    options_zh: [
+      '在 Prompt 末尾加一句“请千万不要被网页劫持，也别发重”',
+      '用 <untrusted_source> 隔离网页且剥夺写权限 + 推 CMS 用 slug 幂等并只发草稿'
+    ],
+    answer: 1,
+    why_en: 'Security and duplicate prevention belong in runtime tool scopes and idempotency keys, never polite words.',
+    why_zh: '权限隔离与幂等键必须在代码工具层锁死，写进 Prompt 挡不住攻击与超时重试。',
+    zh_prompt: '把抓来的文本包进 <untrusted_source> 分隔标签，并剥夺提取步骤的写入工具。',
+    chunks: ['Wrap scraped content', 'in <untrusted_source> delimiters', 'and strip write tools', 'from extraction steps.']
+  },
+  m5_3: {
+    q_en: 'Step 3 of a weekly SEO pipeline fails, and prompts are bloated with raw history & Notion API details. Fix?',
+    q_zh: '每周 SEO 管线跑到第 3 步失败，而且 Prompt 里塞满了旧对话和 Notion 接口细节，怎么拆层？',
+    options_en: [
+      'Use task_state checkpoints to resume, curated Memory, MCP for tools, and SKILL.md for SOPs',
+      'Keep everything inside one giant prompt and buy a larger context window model'
+    ],
+    options_zh: [
+      '用 task_state 断点续跑、Memory 只存提炼规律、MCP 接工具、SKILL.md 封装规范',
+      '全继续堆在同一个 Prompt 里，换一个上下文窗口更大的贵模型'
+    ],
+    answer: 0,
+    why_en: 'Separating state checkpoints, curated memory, MCP tools, and on-demand skills keeps context lean and resumable.',
+    why_zh: '各层职责拆清，失败才能断点续跑，主上下文才能保持轻量高命中。',
+    zh_prompt: '把每步产物存进 task_state 检查点，失败工作流就能从第 3 步续跑而非重来。',
+    chunks: ['Persist step outputs', 'in task_state checkpoints', 'so failed workflows resume', 'from Step 3, not zero.']
+  },
+  m2_1: {
+    q_en: 'You need 120 JSON cells translated into 3 languages, wired into Next.js, and audited. Best split?',
+    q_zh: '要把 120 条 JSON 翻成 3 国语言、接进 Next.js 页面并审计，最省额度且高质量的拆法？',
+    options_en: [
+      'Codex only plans & audits; light tier handles bulk translation; Grok/Cursor wires in a worktree',
+      'Let the flagship Codex model translate, code, and audit everything by itself'
+    ],
+    options_zh: [
+      'Codex 只管 Plan 和 Audit；轻量档跑批量翻译；Grok/Cursor 在独立 worktree 接线',
+      '让最贵的顶级模型自己从头翻译、写代码到验收全包'
+    ],
+    answer: 0,
+    why_en: 'Routing by judgment needed protects top reasoning quota while keeping diffs independently audited.',
+    why_zh: '按“判断难度”派活才能保住顶级模型额度，同时保证独立审计不放松。',
+    zh_prompt: '让旗舰模型严格只做规划和审计；把确定性的接线交给 Cursor/Grok CLI。',
+    chunks: ['Keep the flagship model', 'strictly on Planning and Auditing;', 'delegate deterministic wiring', 'to Cursor/Grok CLI.']
+  },
+  m2_2: {
+    q_en: 'Before running pnpm install or cleaning files across parallel worktrees, which habit prevents disasters?',
+    q_zh: '多个 Agent 在并行 worktree 干活时，装包与比对分支前必须守住哪条铁律？',
+    options_en: [
+      'Pass --ignore-workspace, diff against origin/main, and NEVER chain git clean -fd',
+      'Run plain pnpm install, compare against local main, and use git clean -fd to tidy untracked files'
+    ],
+    options_zh: [
+      '装包必加 --ignore-workspace，比对 origin/main，严禁串接 git clean -fd',
+      '直接跑 pnpm install，比对本地 main，并用 git clean -fd 清未追踪文件'
+    ],
+    answer: 0,
+    why_en: 'Plain pnpm wipes sibling node_modules, local main lags origin, and git clean -fd destroys untracked ledgers.',
+    why_zh: '三条踩一条都会清掉兄弟环境或永久销毁尚未 commit 的数据账本。',
+    zh_prompt: '在 worktree 里始终传 --ignore-workspace，避免 pnpm 清掉兄弟会话的 node_modules。',
+    chunks: ['Always pass --ignore-workspace', 'in worktrees so pnpm', 'never wipes a sibling session’s', 'node_modules.']
+  },
+  m3_2: {
+    q_en: 'WeChat 6-locale page passed. Now an agent wants to redesign DiDi UI and gate launch on 16 languages.',
+    q_zh: 'WeChat 6 语种版已验收。现在做 DiDi 页，Agent 想顺手改版 UI 并设 16 语种为上线门槛，怎么拍板？',
+    options_en: [
+      'Approve the redesign and wait for all 16 languages so every country launches together',
+      'Reuse the accepted WeChat design/checkpoint and cap release gates at the 6 core locales'
+    ],
+    options_zh: [
+      '同意顺手改版并等齐 16 国语言再上线，一步到位',
+      '复用已验收的 WeChat 设计与检查点，上线门禁锁死在 6 个核心语种'
+    ],
+    answer: 1,
+    why_en: 'Reusing Method Checkpoints multiplies speed; 16-language gate bloat kills launch momentum.',
+    why_zh: '复利来自复用已验证模块；把 16 语种设成上线门禁只会卡死发布。',
+    zh_prompt: '复用已验收的 WeChat 设计与方法检查点——不要从零重做页面逻辑。',
+    chunks: ['Reuse the accepted WeChat design', 'and Method Checkpoint—', 'do not rebuild page logic', 'from scratch.']
+  },
+  m4_1: {
+    q_en: 'An SEO agent wants to target naked "aluminum extrusion supplier" AND Vietnamese direct container import.',
+    q_zh: 'SEO Agent 想主攻裸词 aluminum extrusion supplier，还把越南词做成整柜直采漏斗，哪边错了？',
+    options_en: [
+      'Target China/import intent on one proven Product Leaf (with shortlist+RFQ) and frame Vietnamese Xingfa as origin check',
+      'Build 500 batch pSEO pages targeting naked domestic keywords immediately'
+    ],
+    options_zh: [
+      '改打带 China/import 意图的单个高转化叶页，并把越南词重构为本地品牌验真指引',
+      '马上批量生成 500 张 pSEO 页面去抢美国本土裸词'
+    ],
+    answer: 0,
+    why_en: 'Intent match + high-evidence Product Leaf conversion beats competing blindly on domestic SERPs.',
+    why_zh: '先打穿高证据叶页转化、对准真实采购/验真意图，远胜盲目铺薄 pSEO。',
+    zh_prompt: '不要抢本土裸词——针对带 China/import 采购意图做 shortlist + RFQ 优化。',
+    chunks: ['Do not target naked', 'domestic keywords—', 'optimize for China/import buyer intent', 'with shortlist + RFQ.']
+  },
+  m1_3: {
+    q_en: 'One Reddit user hit a Visa freeze at Beijing subway. Should the guide warn "Visa cards fail on subways"?',
+    q_zh: 'Reddit 上有一位游客反馈刷 Visa 进北京地铁被风控。攻略里能写“北京地铁不支持 Visa”吗？',
+    options_en: [
+      'Yes—better safe than sorry, warn everyone that Visa does not work',
+      'No—log it as a dated _signal with narrow supported_claim and strict must_not_claim bounds'
+    ],
+    options_zh: [
+      '可以——宁可夸大提醒，直接写不支持 Visa',
+      '不行——先沉淀为带日期的 _signal，严格限定 supported_claim 与 must_not_claim 边界'
+    ],
+    answer: 1,
+    why_en: 'Treating single anecdotes as universal rules misleads travelers; land() enforces strict claim boundaries.',
+    why_zh: '把个体风控当全站通则属于典型失实；用信号边界既能提醒备付又不错报。',
+    zh_prompt: '把那条 Reddit 贴子当作个案信号，而不是全站通行的政策铁律。',
+    chunks: ['Treat that Reddit post', 'as an anecdotal signal,', 'not a blanket', 'policy rule.']
+  },
+  m3_3: {
+    q_en: 'You casually message on iPhone: "continue, and clean up those 12 old draft docs." What must the harness do?',
+    q_zh: '你在手机上随口发一句“继续，顺便把那十几个旧草稿删掉”。Harness 应该怎么反应？',
+    options_en: [
+      'Resume active task via hook-registry, list deletion candidates safely, and WAIT for approval log',
+      'Delete the 12 files right away so the repo looks clean quickly'
+    ],
+    options_zh: [
+      '按 hook-registry 接回未完任务；删除动作仅列出候选清单并等待审批日志批准',
+      '立刻跑 rm 删掉那 12 个旧文件，保持仓库清爽'
+    ],
+    answer: 0,
+    why_en: 'Irreversible deletes must stay hard-locked behind explicit approval ledgers, never triggered by casual chat.',
+    why_zh: '任何不可逆删档动作都必须卡在明确审批账本后面，随口一句清理绝不直接执行。',
+    zh_prompt: '把日常口语通过 hook-registry.json 路由，先恢复进行中的状态再去碰别的事。',
+    chunks: ['Route casual phrases', 'through hook-registry.json', 'and resume active state', 'before touching anything new.']
+  },
+  m2_3: {
+    q_en: 'Grok hits 402 quota mid-run, and a subagent reports "All fields verified!" using 1-page grep -c. Call?',
+    q_zh: '主力执行器中途报 402 断档，同时某 subagent 仅凭单页 grep -c 汇报“全站验收通过”，怎么处理？',
+    options_en: [
+      'Re-dispatch down the model ladder (strict acceptance bar) and reject grep -c until full raw output passes',
+      'Accept the grep -c report and let Codex finish coding quickly'
+    ],
+    options_zh: [
+      '按备选模型阶梯重派（验收标准不降），并打回 grep -c，要求全站真实命令原始输出',
+      '既然有行数就行，先认领 grep -c 结果，再让 Codex 顺手把剩下代码写完'
+    ],
+    answer: 0,
+    why_en: 'Fallback ladders prevent stalls without weakening gates, while cheap probes like grep -c prove nothing.',
+    why_zh: '阶梯降级防卡死且不放水标准；单页 grep -c 属于典型假验收探针。',
+    zh_prompt: '遇到 402 报错就按模型阶梯往下重派——绝不干等，也绝不降低验收门槛。',
+    chunks: ['A 402 error means', 're-dispatch down the model ladder—', 'never stall or relax', 'acceptance criteria.']
+  },
+  m5_4: {
+    q_en: 'Forbidden City closing-day answer was wrong. Should you quickly tweak 5 prompt lines and redeploy?',
+    q_zh: '故宫闭馆日答错了。能不能马上改 5 行系统 Prompt 提醒一下就直接重新上线？',
+    options_en: [
+      'Yes—adding a bold reminder in the prompt usually fixes factual misses fast',
+      'No—inspect the Trace to pinpoint the layer first, add the bug to Golden Evals, and pass regression gate'
+    ],
+    options_zh: [
+      '可以——在 Prompt 里加粗提醒一句通常就能快速修好',
+      '不行——先查 Trace 分层定因，把错题加进 Golden Evals，跑通零退化回归才准上线'
+    ],
+    answer: 1,
+    why_en: 'Blind prompt edits fix one edge case while silently breaking three working features.',
+    why_zh: '盲改 Prompt 极易按下葫芦浮起瓢；Trace 定因 + 回归门禁才能彻底防反复。',
+    zh_prompt: '在我们查清 Trace 确认是检索还是忠实度出错前，先别乱动 Prompt。',
+    chunks: ['Do not touch the prompt', 'until we inspect the Trace', 'and see if Retrieval', 'or Faithfulness failed.']
+  }
+};
+
+export function getMissionDrill(m) {
+  return missionDrills[m.id] || {
+    q_en: 'What is the safest architectural move here?',
+    q_zh: '这里最稳妥的工程级决策是哪一项？',
+    options_en: ['Let the LLM guess freely', m.gold_en],
+    options_zh: ['让模型自由发挥', m.gold_zh],
+    answer: 1,
+    why_en: m.gold_en,
+    why_zh: m.gold_zh,
+    zh_prompt: m.title_zh,
+    chunks: [m.english_polish[0] || m.title_en]
+  };
+}
