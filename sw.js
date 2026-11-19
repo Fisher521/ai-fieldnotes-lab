@@ -1,4 +1,4 @@
-const CACHE = 'ai-fieldnotes-v9';
+const CACHE = 'ai-fieldnotes-v10';
 const ASSETS = [
   './',
   './index.html',

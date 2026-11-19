@@ -31,6 +31,8 @@ let sess = {
 
 let activeVoiceRec = null;
 let isRecordingVoice = false;
+let syncBusy = false;
+let cloudPushTimer = null;
 
 function readState() {
   try {
@@ -72,15 +74,252 @@ function normalize(d) {
       : [],
     missionDrafts: x.missionDrafts && typeof x.missionDrafts === 'object' ? x.missionDrafts : {},
     missionEvals: x.missionEvals && typeof x.missionEvals === 'object' ? x.missionEvals : {},
-    completedMissions: Array.isArray(x.completedMissions) ? x.completedMissions.filter((v) => typeof v === 'string') : []
+    completedMissions: Array.isArray(x.completedMissions) ? x.completedMissions.filter((v) => typeof v === 'string') : [],
+    syncKey: typeof x.syncKey === 'string' ? x.syncKey.trim().toLowerCase().slice(0, 64) : '',
+    lastSyncedAt: typeof x.lastSyncedAt === 'string' ? x.lastSyncedAt : '',
+    updatedAt: Number.isFinite(Number(x.updatedAt)) ? Number(x.updatedAt) : 0
   };
 }
 
-function save() {
+function save(skipCloudPush = false) {
+  if (!skipCloudPush) state.updatedAt = Date.now();
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
     notice(t('Cannot save locally. Export JSON backup.', '无法保存本地记录，请导出备份'));
+  }
+  if (!skipCloudPush && state.syncKey) scheduleCloudPush();
+}
+
+function uniq(a, b) {
+  return Array.from(new Set([...(a || []), ...(b || [])]));
+}
+
+function mergeStates(baseRaw, incRaw) {
+  const a = normalize(baseRaw);
+  const b = normalize(incRaw);
+  const merged = normalize({ ...a });
+  merged.completedMissions = uniq(a.completedMissions, b.completedMissions);
+  merged.completed = uniq(a.completed, b.completed);
+  merged.learned = uniq(a.learned, b.learned);
+  merged.labs = uniq(a.labs, b.labs);
+  merged.evalChecks = uniq(a.evalChecks, b.evalChecks);
+
+  const cevMap = new Map();
+  [...a.customEvals, ...b.customEvals].forEach((c) => { if (c && c.id) cevMap.set(c.id, c); });
+  merged.customEvals = Array.from(cevMap.values());
+
+  const bNewer = (b.updatedAt || 0) >= (a.updatedAt || 0);
+  merged.missionDrafts = { ...a.missionDrafts };
+  for (const [k, v] of Object.entries(b.missionDrafts || {})) {
+    const cur = merged.missionDrafts[k] || '';
+    if (v && (!cur || bNewer || v.length > cur.length)) merged.missionDrafts[k] = v;
+  }
+
+  merged.notes = { ...a.notes };
+  for (const [k, v] of Object.entries(b.notes || {})) {
+    const cur = merged.notes[k] || '';
+    if (v && (!cur || bNewer || v.length > cur.length)) merged.notes[k] = v;
+  }
+
+  merged.missionEvals = { ...a.missionEvals };
+  for (const [k, v] of Object.entries(b.missionEvals || {})) {
+    const cur = merged.missionEvals[k];
+    if (!cur || (v && ((v.score || 0) > (cur.score || 0) || String(v.ts || '') > String(cur.ts || '')))) {
+      merged.missionEvals[k] = v;
+    }
+  }
+
+  merged.quiz = { ...a.quiz };
+  for (const [k, v] of Object.entries(b.quiz || {})) {
+    const cur = merged.quiz[k];
+    if (!cur || (v && (v.score || 0) >= (cur.score || 0))) merged.quiz[k] = v;
+  }
+
+  merged.syncKey = a.syncKey || b.syncKey || '';
+  merged.updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0, Date.now());
+  merged.lastSyncedAt = b.lastSyncedAt || a.lastSyncedAt || '';
+  return merged;
+}
+
+function packSyncPayload() {
+  const p = { a: 'AF', v: 3, t: state.updatedAt || Date.now(), lm: state.langMode };
+  if (state.syncKey) p.k = state.syncKey;
+  if (state.completedMissions.length) p.cm = state.completedMissions;
+  if (JSON.stringify(state.completed) !== JSON.stringify(DEFAULT_BASICS)) p.c = state.completed;
+  if (state.learned.length) p.l = state.learned;
+  if (state.labs.length) p.lb = state.labs;
+  if (state.evalChecks.length) p.ec = state.evalChecks;
+  if (state.customEvals.length) p.ce = state.customEvals;
+  if (Object.keys(state.missionDrafts).length) p.md = state.missionDrafts;
+  if (Object.keys(state.missionEvals).length) p.me = state.missionEvals;
+  if (Object.keys(state.notes).length) p.n = state.notes;
+  if (Object.keys(state.quiz).length) p.q = state.quiz;
+  return p;
+}
+
+function unpackSyncPayload(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+  if (obj.app === 'AI Fieldnotes' && obj.state) return normalize(obj.state);
+  if (obj.a !== 'AF' && obj.app !== 'AI Fieldnotes') return null;
+  return normalize({
+    completedMissions: obj.cm || obj.completedMissions || [],
+    completed: obj.c || obj.completed || [...DEFAULT_BASICS],
+    learned: obj.l || obj.learned || [],
+    labs: obj.lb || obj.labs || [],
+    evalChecks: obj.ec || obj.evalChecks || [],
+    customEvals: obj.ce || obj.customEvals || [],
+    missionDrafts: obj.md || obj.missionDrafts || {},
+    missionEvals: obj.me || obj.missionEvals || {},
+    notes: obj.n || obj.notes || {},
+    quiz: obj.q || obj.quiz || {},
+    langMode: obj.lm || obj.langMode || state.langMode,
+    syncKey: obj.k || obj.syncKey || '',
+    updatedAt: obj.t || obj.updatedAt || Date.now()
+  });
+}
+
+function hashSyncKey(key) {
+  let h1 = 0xdeadbeef ^ 0x4149464e;
+  let h2 = 0x41c6ce57 ^ 0x53594e43;
+  const str = 'aifn_v3:' + String(key).trim().toLowerCase();
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (h2 >>> 0).toString(36).padStart(7, '0') + (h1 >>> 0).toString(36).padStart(7, '0');
+}
+
+function syncTopic(key) {
+  return 'aifn_sync_v3_' + hashSyncKey(key);
+}
+
+function encodeB64Url(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function decodeB64Url(b64) {
+  const pad = b64.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((b64.length + 3) % 4);
+  const bin = atob(pad);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+function buildMagicSyncLink() {
+  const encoded = encodeB64Url(JSON.stringify(packSyncPayload()));
+  return location.origin + location.pathname + '#sync=' + encoded;
+}
+
+function applyIncomingPacket(packet) {
+  const unpacked = unpackSyncPayload(packet);
+  if (!unpacked) return false;
+  state = mergeStates(state, unpacked);
+  state.lastSyncedAt = new Date().toISOString();
+  save(true);
+  return true;
+}
+
+function checkHashMagicSync() {
+  const h = location.hash || '';
+  let raw = '';
+  if (h.startsWith('#sync=')) raw = h.slice(6);
+  else if (h.startsWith('#/sync/')) raw = h.slice(7);
+  if (!raw) return false;
+  try {
+    const obj = JSON.parse(decodeB64Url(raw));
+    if (applyIncomingPacket(obj)) {
+      history.replaceState(null, '', '#/missions');
+      notice(t('✓ Progress merged & synced!', '✓ 已自动合并并同步进度！'));
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+async function pullCloudSync(key = state.syncKey) {
+  const k = String(key || '').trim().toLowerCase().slice(0, 64);
+  if (!k) return { ok: false, found: false };
+  try {
+    const res = await fetch('https://ntfy.sh/' + syncTopic(k) + '/json?poll=1&since=all', { cache: 'no-store' });
+    if (!res.ok) return { ok: false, found: false };
+    const text = await res.text();
+    const lines = text.trim().split('\n').filter(Boolean);
+    for (let i = lines.length - 1; i >= 0; i--) {
+      try {
+        const rec = JSON.parse(lines[i]);
+        let candidate = null;
+        if (rec.attachment && rec.attachment.url) {
+          const attRes = await fetch(rec.attachment.url, { cache: 'no-store' });
+          if (attRes.ok) candidate = await attRes.json();
+        } else if (rec.message && rec.message.startsWith('{')) {
+          candidate = JSON.parse(rec.message);
+        }
+        if (candidate && applyIncomingPacket(candidate)) {
+          return { ok: true, found: true };
+        }
+      } catch {}
+    }
+    return { ok: true, found: false };
+  } catch {
+    return { ok: false, found: false };
+  }
+}
+
+async function pushCloudSync(silent = true) {
+  if (!state.syncKey) return false;
+  try {
+    const res = await fetch('https://ntfy.sh/' + syncTopic(state.syncKey), {
+      method: 'POST',
+      body: JSON.stringify(packSyncPayload())
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    state.lastSyncedAt = new Date().toISOString();
+    save(true);
+    updateChromeTexts();
+    if (!silent) notice(t('☁️ Synced to cloud!', '☁️ 已同步到云端！'));
+    return true;
+  } catch {
+    if (!silent) notice(t('Cloud unreachable—saved locally.', '云端暂不可达，已保存在本地'));
+    return false;
+  }
+}
+
+function scheduleCloudPush() {
+  clearTimeout(cloudPushTimer);
+  cloudPushTimer = setTimeout(() => { pushCloudSync(true); }, 900);
+}
+
+async function connectAndSync(rawKey) {
+  const k = String(rawKey || '').trim().toLowerCase().slice(0, 64);
+  if (!k) {
+    state.syncKey = '';
+    state.lastSyncedAt = '';
+    save(true);
+    updateChromeTexts();
+    notice(t('Cloud sync key cleared', '已断开云同步口令'));
+    return;
+  }
+  syncBusy = true;
+  updateChromeTexts();
+  state.syncKey = k;
+  save(true);
+  const pulled = await pullCloudSync(k);
+  const pushed = await pushCloudSync(true);
+  syncBusy = false;
+  render();
+  if (pushed || pulled.ok) {
+    notice(pulled.found
+      ? t('☁️ Merged & synced across devices!', '☁️ 已拉取并合并云端进度！')
+      : t('☁️ Connected! Auto-syncing with key.', '☁️ 已连接同步码，后续自动同步'));
+  } else {
+    notice(t('Could not reach sync relay; saved locally.', '暂未连上云中继，已保存在本地'));
   }
 }
 
@@ -897,10 +1136,44 @@ function updateChromeTexts() {
     b.classList.toggle('active', b.dataset.lang === state.langMode);
   });
 
+  const syncBtn = $('#open-data');
+  if (syncBtn) {
+    syncBtn.classList.toggle('on', Boolean(state.syncKey));
+    syncBtn.classList.toggle('busy', syncBusy);
+    syncBtn.textContent = syncBusy ? '☁️ …' : (state.syncKey ? '☁️ ✓' : '☁️ ' + t('Sync', '同步'));
+  }
+
   const mh = $('#modal-header-content');
   if (mh) {
-    mh.innerHTML = '<h2>' + e(t('Backup & Restore', '备份与恢复进度')) + '</h2><p>' + e(t('Export JSON to sync between Mac and iPhone.', '导出 JSON 即可在 Mac 与 iPhone 之间同步进度。')) + '</p>';
+    mh.innerHTML = '<h2>' + e(t('Sync & Backup', '多设备云同步与备份')) + '</h2><p>' + e(t('Your progress auto-saves locally. Pair iPhone & Mac with a secret Sync Key or Magic Link.', '进度会在本机自动保存；输入同一个口令或复制链接即可在 iPhone 与 Mac 之间互传进度。')) + '</p>';
   }
+  const sct = $('#sync-cloud-title');
+  const scd = $('#sync-cloud-desc');
+  const smt = $('#sync-magic-title');
+  const smd = $('#sync-magic-desc');
+  const skInput = $('#sync-key-input');
+  const skBtn = $('#sync-connect-btn');
+  const mlBtn = $('#copy-magic-link');
+  const sl = $('#sync-status-line');
+  const mp = $('#modal-privacy');
+  if (sct) sct.textContent = '☁️ ' + t('Auto Cloud Sync (Sync Key)', '免登录自动云同步（口令同步）');
+  if (scd) scd.textContent = t('Enter the same secret key on iPhone & Mac to auto-sync changes across devices (12h cloud relay window).', '在 iPhone 和 Mac 输入同一串暗号，此后过关与笔记会自动同步（云端中继保留 12 小时）。');
+  if (smt) smt.textContent = '🔗 ' + t('1-Tap Magic Sync Link', '一键同步直达链接（永久有效）');
+  if (smd) smd.textContent = t('Send via AirDrop, iMessage, or Universal Clipboard to merge progress & pair your Sync Key in 1 tap (works anytime).', '复制包含你全部进度的链接发到另一台设备点开，立刻无损合并进度并自动配对口令。');
+  if (skBtn) skBtn.textContent = '⚡ ' + t('Sync', '立即同步');
+  if (mlBtn) mlBtn.textContent = '🔗 ' + t('Copy Magic Sync Link', '复制一键同步链接');
+  if (skInput && document.activeElement !== skInput) skInput.value = state.syncKey || '';
+  if (sl) {
+    if (syncBusy) {
+      sl.textContent = t('Syncing with cloud relay...', '正在与云端核对最新进度…');
+    } else if (state.syncKey) {
+      const when = state.lastSyncedAt ? new Date(state.lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+      sl.textContent = '✓ ' + t('Paired key', '已连接口令') + ': "' + state.syncKey + '"' + (when ? ' · ' + t('Synced', '最近同步') + ' ' + when : '');
+    } else {
+      sl.textContent = t('Local auto-save active. Enter a key above to enable cloud sync.', '本机实时保存中；填入口令即可开启跨设备自动同步。');
+    }
+  }
+  if (mp) mp.textContent = t('No account required. Every answer and draft auto-saves in this browser.', '无需注册账号，所有答题记录、草稿与词卡都会自动存在本机浏览器。');
 }
 
 function render() {
@@ -945,20 +1218,22 @@ function render() {
   });
 }
 
-function copyText(text) {
+function copyText(text, msg) {
+  const okMsg = msg || t('Copied!', '已复制');
   if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(text).then(() => notice(t('Copied!', '已复制'))).catch(() => legacyCopy(text));
-  } else legacyCopy(text);
+    navigator.clipboard.writeText(text).then(() => notice(okMsg)).catch(() => legacyCopy(text, okMsg));
+  } else legacyCopy(text, okMsg);
 }
 
-function legacyCopy(text) {
+function legacyCopy(text, msg) {
   const ta = document.createElement('textarea');
   ta.value = text;
   ta.style.position = 'fixed';
   ta.style.opacity = '0';
-  document.body.appendChild(ta);
+  const host = $('dialog[open]') || document.body;
+  host.appendChild(ta);
   ta.select();
-  try { document.execCommand('copy'); notice(t('Copied!', '已复制')); } catch {}
+  try { document.execCommand('copy'); notice(msg || t('Copied!', '已复制')); } catch {}
   ta.remove();
 }
 
@@ -1167,7 +1442,18 @@ document.addEventListener('click', (ev) => {
     return;
   }
   if (b.dataset.retake) { delete state.quiz[b.dataset.retake]; delete state.drafts[b.dataset.retake]; save(); render(); return; }
-  if (b.id === 'open-data') { $('#data-dialog').showModal(); return; }
+  if (b.id === 'open-data') { updateChromeTexts(); $('#data-dialog').showModal(); return; }
+  if (b.id === 'sync-connect-btn') {
+    connectAndSync($('#sync-key-input')?.value || '');
+    return;
+  }
+  if (b.id === 'copy-magic-link') {
+    const link = buildMagicSyncLink();
+    copyText(link, t('🔗 Magic Sync Link copied!', '🔗 一键同步链接已复制！'));
+    const sl = $('#sync-status-line');
+    if (sl) sl.textContent = '✓ ' + t('Magic Sync Link copied to clipboard! Paste & open on your other device.', '同步链接已复制到剪贴板！在另一台设备打开即可自动合并进度。');
+    return;
+  }
   if (b.id === 'export-data') {
     const data = JSON.stringify({ app: 'AI Fieldnotes', version: 1, exported_at: new Date().toISOString(), state }, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
@@ -1223,9 +1509,27 @@ document.addEventListener('input', (ev) => {
   }
 });
 
-window.addEventListener('hashchange', () => { render(); window.scrollTo({ top: 0, behavior: 'instant' }); });
+window.addEventListener('hashchange', () => { checkHashMagicSync(); render(); window.scrollTo({ top: 0, behavior: 'instant' }); });
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter' && ev.target && ev.target.id === 'sync-key-input') {
+    ev.preventDefault();
+    connectAndSync(ev.target.value);
+  }
+});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && state.syncKey && !syncBusy) {
+    pullCloudSync(state.syncKey).then((res) => { if (res.found) render(); });
+  }
+});
 
+checkHashMagicSync();
 render();
+if (state.syncKey) {
+  pullCloudSync(state.syncKey).then((res) => {
+    if (res.found) render();
+    else if (state.completedMissions.length || Object.keys(state.missionDrafts).length) pushCloudSync(true);
+  });
+}
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').then((reg) => reg.update()).catch(() => {}));
 }

@@ -26,7 +26,7 @@
           <button type="button" data-lang="en" title="English only">EN</button>
           <button type="button" data-lang="zh" title="中文">中</button>
         </div>
-        <button class="header-action" id="open-data" title="Backup or restore progress">↗</button>
+        <button class="sync-pill" id="open-data" title="Cloud Sync &amp; Backup">☁️ Sync</button>
       </div>
     </header>
 
@@ -44,15 +44,32 @@
   <dialog id="data-dialog" class="modal">
     <form method="dialog"><button class="modal-close" aria-label="Close">×</button></form>
     <div class="modal-header" id="modal-header-content">
-      <h2>Backup &amp; Restore</h2>
-      <p>Your path progress, voice drafts, notes, and eval checks stay in this browser. Export JSON anytime to sync between Mac and iPhone.</p>
+      <h2>Sync &amp; Backup</h2>
+      <p>Your progress auto-saves locally. Pair iPhone &amp; Mac with a secret Sync Key or Magic Link.</p>
     </div>
+
+    <div class="sync-box">
+      <strong class="sync-title" id="sync-cloud-title">☁️ Auto Cloud Sync (Sync Key)</strong>
+      <p class="small muted" id="sync-cloud-desc" style="margin:3px 0 8px">Enter the same secret key on iPhone &amp; Mac to auto-sync changes across devices (12h cloud relay window).</p>
+      <div class="sync-input-row">
+        <input id="sync-key-input" type="text" autocomplete="off" spellcheck="false" placeholder="Secret key, e.g. fisher521"/>
+        <button type="button" id="sync-connect-btn" class="button primary tiny">⚡ Sync</button>
+      </div>
+      <div class="sync-status" id="sync-status-line">Local save active. Enter a key to enable cloud sync.</div>
+    </div>
+
+    <div class="sync-box">
+      <strong class="sync-title" id="sync-magic-title">🔗 1-Tap Magic Sync Link</strong>
+      <p class="small muted" id="sync-magic-desc" style="margin:3px 0 8px">Send via AirDrop, iMessage, or Universal Clipboard to merge progress &amp; pair your Sync Key in 1 tap (works anytime).</p>
+      <button type="button" id="copy-magic-link" class="button secondary tiny">🔗 Copy Magic Sync Link</button>
+    </div>
+
     <div class="modal-actions">
-      <button id="export-data" class="button primary">↓ Export JSON</button>
-      <button id="import-data" class="button secondary">↑ Import JSON</button>
+      <button id="export-data" class="button secondary tiny">↓ Export JSON</button>
+      <button id="import-data" class="button secondary tiny">↑ Import JSON</button>
       <input type="file" id="import-file" accept="application/json,.json" hidden/>
     </div>
-    <p class="privacy" id="modal-privacy">No login required. Data never leaves your browser.</p>
+    <p class="privacy" id="modal-privacy">No account required. Every answer and draft auto-saves in this browser.</p>
   </dialog>
 
   <script type="module" src="./app.js"></script>
